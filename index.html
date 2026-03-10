@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>StreamAAC</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #7c6aff;
+    --accent2: #ff6a9b;
+    --text: #e2e2f0;
+    --muted: #555570;
+    --chat-bg: #0e0e16;
+    --success: #4ade80;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; height: 100dvh; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ═══════════════════════════════════
+     COMPACT VIEW
+  ═══════════════════════════════════ */
+  #compact-view {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); transition: background 0.3s; flex-shrink: 0;
+  }
+  .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2s infinite; }
+  .status-dot.connecting { background: #facc15; }
+  .status-dot.error { background: var(--accent2); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .status-label { font-size: 13px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .hbtn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
+  }
+  .hbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .collapsible { overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s ease; flex-shrink: 0; }
+  .collapsible.closed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+
+  /* SETUP */
+  #setup-panel { max-height: 340px; border-bottom: 1px solid var(--border); }
+  #setup-inner { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  label { font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+  input[type="text"], input[type="password"] {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 14px; flex: 1; outline: none; transition: border-color 0.2s; min-width: 0;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+
+  button {
+    font-family: 'DM Mono', monospace; font-size: 14px; border: none;
+    border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    padding: 10px 15px; font-weight: 500;
+  }
+
+  .btn-connect { background: var(--accent); color: white; flex-shrink: 0; }
+  .btn-connect:active { transform: scale(0.96); }
+  .btn-connect.off { background: var(--border); color: var(--muted); }
+
+  .key-hint {
+    font-size: 12px; color: var(--muted);
+    padding: 0 2px;
+  }
+  .key-hint a { color: var(--accent); text-decoration: none; }
+  .key-hint a:hover { text-decoration: underline; }
+
+  /* VERBOSITY */
+  #verbosity-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; background: var(--surface);
+  }
+
+  .pill {
+    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    font-size: 13px; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    font-family: 'DM Mono', monospace; transition: all 0.15s; white-space: nowrap;
+  }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .pill:active { transform: scale(0.94); }
+
+  /* CHAT */
+  #chat-panel { max-height: 150px; border-bottom: 1px solid var(--border); }
+  #chat-area {
+    height: 150px; overflow-y: auto; padding: 7px 14px;
+    display: flex; flex-direction: column; gap: 2px; background: var(--chat-bg);
+  }
+  .chat-msg { font-size: 13px; line-height: 1.6; padding: 3px 0; border-bottom: 1px solid #ffffff05; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none} }
+  .chat-user { font-weight: 500; margin-right: 5px; }
+  .chat-text { color: #8080a0; }
+  .empty-state { color: var(--muted); font-size: 11px; text-align: center; padding: 16px 0; }
+
+  /* GEN BAR */
+  #gen-bar {
+    padding: 8px 14px; display: flex; gap: 8px;
+    flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .btn-gen {
+    background: linear-gradient(135deg, var(--accent), #9b6aff);
+    color: white; flex-shrink: 0;
+  }
+  .btn-gen:disabled { opacity: 0.35; cursor: default; }
+  .btn-gen:not(:disabled):active { transform: scale(0.96); }
+
+  /* RESPONSES */
+  #responses-area {
+    flex: 1; overflow-y: auto; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 0;
+  }
+
+  .response-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 14px 16px 16px; display: flex; align-items: flex-start;
+    gap: 12px; flex-shrink: 0; transition: border-color 0.2s;
+  }
+  .response-card.speaking { border-color: var(--accent2); }
+
+  .rnum {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px;
+    color: var(--accent); line-height: 1; flex-shrink: 0; margin-top: 2px; width: 26px;
+  }
+  .rtext { font-size: 16px; line-height: 1.7; color: var(--text); flex: 1; }
+
+  .card-btns { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+  .btn-speak, .btn-stop {
+    width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .btn-speak { background: var(--accent); }
+  .btn-speak:active { transform: scale(0.88); }
+  .btn-stop { background: var(--accent2); display: none; }
+  .btn-stop:active { transform: scale(0.88); }
+  .response-card.speaking .btn-speak { display: none; }
+  .response-card.speaking .btn-stop { display: flex; animation: pulse 0.6s infinite alternate; }
+
+  .loader {
+    display: flex; align-items: center; gap: 10px; padding: 16px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--muted); font-size: 12px; flex-shrink: 0;
+  }
+  .spinner {
+    width: 15px; height: 15px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ═══════════════════════════════════
+     FULLSCREEN VIEW
+  ═══════════════════════════════════ */
+  #fs-view {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: var(--bg); flex-direction: column;
+  }
+  #fs-view.active { display: flex; }
+
+  #fs-topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+
+  #fs-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+  }
+  #fs-status-label { font-size: 11px; color: var(--muted); }
+
+  .fs-verbosity { display: flex; gap: 6px; align-items: center; }
+
+  #fs-suggest-btn {
+    background: linear-gradient(135deg, var(--accent), #9b6aff);
+    color: white; padding: 9px 20px; font-size: 13px; margin-left: auto;
+  }
+  #fs-suggest-btn:disabled { opacity: 0.35; cursor: default; }
+  #fs-suggest-btn:not(:disabled):active { transform: scale(0.96); }
+
+  .btn-exit-fs {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-size: 11px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-family: 'DM Mono', monospace; flex-shrink: 0;
+  }
+  .btn-exit-fs:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  #fs-body { flex: 1; display: flex; min-height: 0; overflow: hidden; position: relative; }
+
+  #fs-responses {
+    flex: 1; overflow-y: auto; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px; min-height: 0;
+  }
+
+  .fs-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 16px 18px 18px; display: flex; align-items: flex-start;
+    gap: 12px; flex-shrink: 0; transition: border-color 0.2s, background 0.2s;
+  }
+  .fs-card.speaking { border-color: var(--accent2); background: #1a0f18; }
+
+  .fs-rnum {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px;
+    color: var(--accent); line-height: 1; flex-shrink: 0; width: 28px; margin-top: 2px;
+  }
+  .fs-rtext { font-size: 17px; line-height: 1.7; color: var(--text); flex: 1; }
+
+  .fs-card-btns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .fs-speak, .fs-stop {
+    width: 44px; height: 44px; border-radius: 10px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .fs-speak { background: var(--accent); }
+  .fs-speak:active { transform: scale(0.88); }
+  .fs-stop { background: var(--accent2); display: none; }
+  .fs-stop:active { transform: scale(0.88); }
+  .fs-card.speaking .fs-speak { display: none; }
+  .fs-card.speaking .fs-stop { display: flex; animation: pulse 0.6s infinite alternate; }
+
+  #fs-chat-panel {
+    width: 240px; flex-shrink: 0; border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transition: width 0.22s ease, opacity 0.2s ease; overflow: hidden;
+  }
+  #fs-chat-panel.closed { width: 0; opacity: 0; pointer-events: none; border-left: none; }
+
+  #fs-chat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; font-size: 11px; color: var(--muted);
+  }
+
+  .btn-close-chat {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 14px; padding: 2px 4px; line-height: 1;
+  }
+  .btn-close-chat:hover { color: var(--accent2); }
+
+  #fs-chat-area {
+    flex: 1; overflow-y: auto; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+    background: var(--chat-bg); font-size: 11px;
+  }
+
+  #fs-open-chat {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-right: none; border-radius: 8px 0 0 8px;
+    color: var(--muted); font-size: 10px; padding: 10px 6px;
+    cursor: pointer; font-family: 'DM Mono', monospace;
+    writing-mode: vertical-rl; display: none; transition: color 0.15s;
+  }
+  #fs-open-chat:hover { color: var(--accent); }
+  #fs-open-chat.visible { display: block; }
+
+  .fs-loader {
+    display: flex; align-items: center; gap: 10px; padding: 20px 18px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--muted); font-size: 13px; flex-shrink: 0;
+  }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ COMPACT VIEW ═══════════════ -->
+<div id="compact-view">
+
+  <header>
+    <div class="logo">StreamAAC</div>
+    <div class="status-dot" id="status-dot"></div>
+    <div class="status-label" id="status-label">not connected</div>
+    <button class="hbtn" id="setup-btn" onclick="toggleSetup()" aria-expanded="true" aria-controls="setup-panel">setup ▲</button>
+    <button class="hbtn" id="chat-btn" onclick="toggleChat()" aria-expanded="true" aria-controls="chat-panel">chat ▲</button>
+    <button class="hbtn" onclick="enterFS()" aria-label="Enter fullscreen">⛶</button>
+  </header>
+
+  <div class="collapsible" id="setup-panel" style="max-height:340px">
+    <div id="setup-inner">
+      <div class="row">
+        <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        <button class="btn-connect" id="connect-btn" onclick="toggleConnect()">connect</button>
+      </div>
+      <div class="row">
+        <label for="handle-input">your handle</label>
+        <input type="text" id="handle-input" placeholder="your twitch username" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+      </div>
+      <div class="row">
+        <label for="persona-input">persona</label>
+        <input type="text" id="persona-input" placeholder="e.g. chill FPS streamer, sarcastic"/>
+      </div>
+      <div class="row">
+        <label for="ctx-input">context</label>
+        <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
+      </div>
+    </div>
+  </div>
+
+  <div id="verbosity-bar">
+    <label>length</label>
+    <button class="pill active" data-v="short" onclick="setV(this)">~5 words</button>
+    <button class="pill" data-v="medium" onclick="setV(this)">1 sentence</button>
+    <button class="pill" data-v="long" onclick="setV(this)">longer</button>
+  </div>
+
+  <div class="collapsible" id="chat-panel" style="max-height:150px">
+    <div id="chat-area">
+      <div class="empty-state" id="empty-msg">connect to see chat</div>
+    </div>
+  </div>
+
+  <div id="gen-bar">
+    <button class="btn-gen" id="gen-btn" onclick="gen(false)" disabled>suggest</button>
+  </div>
+
+  <div id="responses-area">
+    <div class="empty-state">suggestions will appear here</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ FULLSCREEN VIEW ═══════════════ -->
+<div id="fs-view">
+
+  <div id="fs-topbar">
+    <div id="fs-status-dot"></div>
+    <div id="fs-status-label">not connected</div>
+    <div class="fs-verbosity" style="margin-left:12px">
+      <label style="font-size:10px;color:var(--muted);margin-right:2px">length</label>
+      <button class="pill active" data-fv="short" onclick="setFV(this)">~5 words</button>
+      <button class="pill" data-fv="medium" onclick="setFV(this)">1 sentence</button>
+      <button class="pill" data-fv="long" onclick="setFV(this)">longer</button>
+    </div>
+    <button id="fs-suggest-btn" class="btn-gen" onclick="gen(true)" disabled>suggest</button>
+    <button class="btn-exit-fs" onclick="exitFS()">✕ exit</button>
+  </div>
+
+  <div id="fs-body">
+    <div id="fs-responses">
+      <div class="empty-state">hit suggest to generate responses</div>
+    </div>
+    <div id="fs-chat-panel">
+      <div id="fs-chat-header">
+        <span>chat</span>
+        <button class="btn-close-chat" onclick="closeFsChat()" aria-label="Close chat panel">‹</button>
+      </div>
+      <div id="fs-chat-area">
+        <div class="empty-state" style="padding:20px 6px">connect to see chat</div>
+      </div>
+    </div>
+    <button id="fs-open-chat" onclick="openFsChat()" aria-label="Open chat panel">chat ›</button>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──
+const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
+
+// ── STATE ──
+let ws = null, messages = [], isConnected = false, speakingCard = null;
+let verbosity = 'short';
+const MAX_MSG = 40;
+
+const VLENGTH = {
+  short:  'Each response must be ~5 words — very short, punchy, natural spoken fragments.',
+  medium: 'Each response is exactly one sentence, 10–20 words.',
+  long:   'Each response is 2–3 sentences, expansive and conversational.'
+};
+
+// ── LOCALSTORAGE: load saved values on startup ──
+window.addEventListener('DOMContentLoaded', () => {
+  const savedChannel = localStorage.getItem('twitch_channel');
+  const savedHandle = localStorage.getItem('twitch_handle');
+  const savedPersona = localStorage.getItem('persona');
+  const savedCtx = localStorage.getItem('context');
+
+  if (savedChannel) document.getElementById('channel-input').value = savedChannel;
+  if (savedHandle) document.getElementById('handle-input').value = savedHandle;
+  if (savedPersona) document.getElementById('persona-input').value = savedPersona;
+  if (savedCtx) document.getElementById('ctx-input').value = savedCtx;
+
+  // Save on change
+  document.getElementById('channel-input').addEventListener('change', () =>
+    localStorage.setItem('twitch_channel', document.getElementById('channel-input').value.trim()));
+  document.getElementById('persona-input').addEventListener('change', () =>
+    localStorage.setItem('persona', document.getElementById('persona-input').value.trim()));
+  document.getElementById('handle-input').addEventListener('change', () =>
+    localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim()));
+  document.getElementById('ctx-input').addEventListener('change', () =>
+    localStorage.setItem('context', document.getElementById('ctx-input').value.trim()));
+});
+
+// ── COLLAPSE ──
+function toggleSetup() {
+  const el = document.getElementById('setup-panel');
+  const btn = document.getElementById('setup-btn');
+  const closed = el.classList.toggle('closed');
+  btn.textContent = closed ? 'setup ▼' : 'setup ▲';
+  btn.setAttribute('aria-expanded', !closed);
+}
+function toggleChat() {
+  const el = document.getElementById('chat-panel');
+  const btn = document.getElementById('chat-btn');
+  const closed = el.classList.toggle('closed');
+  btn.textContent = closed ? 'chat ▼' : 'chat ▲';
+  btn.setAttribute('aria-expanded', !closed);
+}
+
+// ── FULLSCREEN ──
+function enterFS() { document.getElementById('fs-view').classList.add('active'); }
+function exitFS()  { document.getElementById('fs-view').classList.remove('active'); }
+function closeFsChat() {
+  document.getElementById('fs-chat-panel').classList.add('closed');
+  document.getElementById('fs-open-chat').classList.add('visible');
+}
+function openFsChat() {
+  document.getElementById('fs-chat-panel').classList.remove('closed');
+  document.getElementById('fs-open-chat').classList.remove('visible');
+}
+
+// ── VERBOSITY ──
+function setV(btn) {
+  document.querySelectorAll('.pill[data-v]').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  verbosity = btn.dataset.v;
+  document.querySelectorAll('.pill[data-fv]').forEach(p =>
+    p.classList.toggle('active', p.dataset.fv === verbosity));
+}
+function setFV(btn) {
+  document.querySelectorAll('.pill[data-fv]').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  verbosity = btn.dataset.fv;
+  document.querySelectorAll('.pill[data-v]').forEach(p =>
+    p.classList.toggle('active', p.dataset.v === verbosity));
+}
+
+// ── STATUS ──
+function setStatus(cls, txt) {
+  document.getElementById('status-dot').className = 'status-dot ' + cls;
+  document.getElementById('status-label').textContent = txt;
+  document.getElementById('fs-status-dot').className = 'status-dot ' + cls;
+  document.getElementById('fs-status-label').textContent = txt;
+}
+
+// ── CONNECT ──
+function toggleConnect() { isConnected ? disconnect() : connect(); }
+
+function connect() {
+  // Accept full URL (https://twitch.tv/name or twitch.tv/name) or bare handle
+  let ch = document.getElementById('channel-input').value.trim().toLowerCase();
+  ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
+  if (!ch) return;
+  setStatus('connecting', 'connecting…');
+  const btn = document.getElementById('connect-btn');
+  btn.textContent = '…';
+
+  ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  ws.onopen = () => {
+    ws.send('PASS oauth:justinfan12345');
+    ws.send('NICK justinfan12345');
+    ws.send('JOIN #' + ch);
+  };
+  ws.onmessage = (e) => {
+    const raw = e.data.trim();
+    if (raw.includes('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
+    if (raw.includes('366')) {
+      isConnected = true;
+      setStatus('connected', '#' + ch);
+      btn.textContent = 'leave'; btn.className = 'btn-connect off';
+      document.getElementById('gen-btn').disabled = false;
+      document.getElementById('fs-suggest-btn').disabled = false;
+      clearEmptyMsg();
+      const sp = document.getElementById('setup-panel');
+      if (!sp.classList.contains('closed')) toggleSetup();
+    }
+    const m = raw.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
+    if (m) addMsg(m[1], m[2]);
+  };
+  ws.onerror = () => {
+    setStatus('error', 'error'); btn.textContent = 'retry'; btn.className = 'btn-connect'; isConnected = false;
+  };
+  ws.onclose = () => {
+    if (!isConnected) return;
+    setStatus('error', 'disconnected'); isConnected = false;
+    btn.textContent = 'connect'; btn.className = 'btn-connect';
+    document.getElementById('gen-btn').disabled = true;
+    document.getElementById('fs-suggest-btn').disabled = true;
+  };
+}
+
+function disconnect() {
+  if (ws) ws.close();
+  isConnected = false; setStatus('', 'not connected');
+  const btn = document.getElementById('connect-btn');
+  btn.textContent = 'connect'; btn.className = 'btn-connect';
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('fs-suggest-btn').disabled = true;
+}
+
+// ── CHAT ──
+function clearEmptyMsg() {
+  const e = document.getElementById('empty-msg'); if (e) e.remove();
+  const fe = document.querySelector('#fs-chat-area .empty-state'); if (fe) fe.remove();
+}
+
+function addMsg(user, text) {
+  messages.push({ user, text });
+  if (messages.length > MAX_MSG) messages.shift();
+  const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
+  const col = cols[user.charCodeAt(0) % cols.length];
+  const html = `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`;
+  const ca = document.getElementById('chat-area');
+  ca.insertAdjacentHTML('beforeend', html); ca.scrollTop = ca.scrollHeight;
+  const fca = document.getElementById('fs-chat-area');
+  fca.insertAdjacentHTML('beforeend', html); fca.scrollTop = fca.scrollHeight;
+}
+
+function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── GENERATE (Anthropic via proxy) ──
+async function gen(isFs=false) {
+  const chat = messages.slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
+  if (!chat) { alert('No chat messages yet'); return; }
+
+  const persona = document.getElementById('persona-input').value.trim() || 'a streamer';
+  let handle = document.getElementById('handle-input').value.trim().toLowerCase();
+  handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
+  const ctx = document.getElementById('ctx-input').value.trim();
+
+  const loader = `<div class="${isFs?'fs-loader':'loader'}"><div class="spinner"></div>generating…</div>`;
+  if (isFs) { document.getElementById('fs-responses').innerHTML = loader; document.getElementById('fs-suggest-btn').disabled = true; }
+  else { document.getElementById('responses-area').innerHTML = loader; document.getElementById('gen-btn').disabled = true; }
+
+  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
+
+Length rule: ${VLENGTH[verbosity]}
+
+Generate exactly 3 options varying tone: one warm/engaged, one witty/playful, one direct.
+Reply ONLY with valid JSON, no other text: {"responses":["...","...","..."]}
+
+Recent chat:
+${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}`;
+
+  try {
+    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error));
+
+    const raw = d.content?.[0]?.text ?? '';
+    const clean = raw.trim().replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    if (isFs) renderFsCards(parsed.responses);
+    else renderCards(parsed.responses);
+  } catch(e) {
+    const errHtml = `<div class="${isFs?'fs-loader':'loader'}" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
+    if (isFs) document.getElementById('fs-responses').innerHTML = errHtml;
+    else document.getElementById('responses-area').innerHTML = errHtml;
+  } finally {
+    if (isFs) document.getElementById('fs-suggest-btn').disabled = false;
+    else document.getElementById('gen-btn').disabled = false;
+  }
+}
+
+// ── RENDER COMPACT ──
+function renderCards(responses) {
+  const area = document.getElementById('responses-area');
+  area.innerHTML = '';
+  responses.forEach((text, i) => {
+    const card = document.createElement('div');
+    card.className = 'response-card';
+    card.innerHTML = `<div class="rnum">${i+1}</div><div class="rtext">${x(text)}</div>
+      <div class="card-btns"><button class="btn-speak">🔊</button><button class="btn-stop">■</button></div>`;
+    card.querySelector('.btn-speak').onclick = () => speak(text, card);
+    card.querySelector('.btn-stop').onclick = () => stopSpeak();
+    area.appendChild(card);
+  });
+}
+
+// ── RENDER FULLSCREEN ──
+function renderFsCards(responses) {
+  const area = document.getElementById('fs-responses');
+  area.innerHTML = '';
+  responses.forEach((text, i) => {
+    const card = document.createElement('div');
+    card.className = 'fs-card';
+    card.innerHTML = `<div class="fs-rnum">${i+1}</div><div class="fs-rtext">${x(text)}</div>
+      <div class="fs-card-btns"><button class="fs-speak">🔊</button><button class="fs-stop">■</button></div>`;
+    card.querySelector('.fs-speak').onclick = () => speak(text, card);
+    card.querySelector('.fs-stop').onclick = () => stopSpeak();
+    area.appendChild(card);
+  });
+}
+
+// ── SPEECH ──
+function speak(text, card) {
+  stopSpeak();
+  speakingCard = card;
+  card.classList.add('speaking');
+  const u = new SpeechSynthesisUtterance(text);
+  const v = window.speechSynthesis.getVoices().find(v =>
+    v.name.includes('Samantha') || v.name.includes('Karen') ||
+    v.name.includes('Daniel') || v.lang === 'en-US');
+  if (v) u.voice = v;
+  u.rate = 0.95;
+  u.onend = u.onerror = () => clearSpeak(card);
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeak() {
+  window.speechSynthesis.cancel();
+  if (speakingCard) clearSpeak(speakingCard);
+}
+
+function clearSpeak(card) {
+  card.classList.remove('speaking');
+  speakingCard = null;
+}
+
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+</script>
+</body>
+</html>
