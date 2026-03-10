@@ -40,8 +40,8 @@
   header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
+    gap: 11px;
+    padding: 14px 19px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
@@ -49,14 +49,14 @@
   .logo {
     font-family: 'Syne', sans-serif;
     font-weight: 800;
-    font-size: 17px;
+    font-size: 23px;
     background: linear-gradient(120deg, var(--accent), var(--accent2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
+    width: 11px; height: 11px; border-radius: 50%;
     background: var(--muted); transition: background 0.3s; flex-shrink: 0;
   }
   .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2s infinite; }
@@ -64,11 +64,11 @@
   .status-dot.error { background: var(--accent2); }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
 
-  .status-label { font-size: 13px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-label { font-size: 18px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .hbtn {
     background: none; border: 1px solid var(--border); color: var(--muted);
-    font-size: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 16px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
     font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
   }
   .hbtn:hover { border-color: var(--accent); color: var(--accent); }
@@ -77,24 +77,24 @@
   .collapsible.closed { max-height: 0 !important; opacity: 0; pointer-events: none; }
 
   /* SETUP */
-  #setup-panel { max-height: 340px; border-bottom: 1px solid var(--border); }
-  #setup-inner { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  #setup-panel { max-height: 460px; border-bottom: 1px solid var(--border); }
+  #setup-inner { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
 
-  .row { display: flex; gap: 8px; align-items: center; }
-  label { font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .row { display: flex; gap: 11px; align-items: center; }
+  label { font-size: 16px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
   input[type="text"], input[type="password"] {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
-    font-size: 14px; flex: 1; outline: none; transition: border-color 0.2s; min-width: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 11px;
+    padding: 14px 18px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 19px; flex: 1; outline: none; transition: border-color 0.2s; min-width: 0;
   }
   input:focus { border-color: var(--accent); }
   input::placeholder { color: var(--muted); }
 
   button {
-    font-family: 'DM Mono', monospace; font-size: 14px; border: none;
-    border-radius: 8px; cursor: pointer; transition: all 0.15s;
-    padding: 10px 15px; font-weight: 500;
+    font-family: 'DM Mono', monospace; font-size: 19px; border: none;
+    border-radius: 11px; cursor: pointer; transition: all 0.15s;
+    padding: 14px 20px; font-weight: 500;
   }
 
   .btn-connect { background: var(--accent); color: white; flex-shrink: 0; }
@@ -102,42 +102,42 @@
   .btn-connect.off { background: var(--border); color: var(--muted); }
 
   .key-hint {
-    font-size: 12px; color: var(--muted);
-    padding: 0 2px;
+    font-size: 16px; color: var(--muted);
+    padding: 0 3px;
   }
   .key-hint a { color: var(--accent); text-decoration: none; }
   .key-hint a:hover { text-decoration: underline; }
 
   /* VERBOSITY */
   #verbosity-bar {
-    display: flex; align-items: center; gap: 6px;
-    padding: 7px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 19px; border-bottom: 1px solid var(--border);
     flex-shrink: 0; background: var(--surface);
   }
 
   .pill {
     background: var(--bg); border: 1px solid var(--border); color: var(--muted);
-    font-size: 13px; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    font-size: 18px; padding: 8px 16px; border-radius: 27px; cursor: pointer;
     font-family: 'DM Mono', monospace; transition: all 0.15s; white-space: nowrap;
   }
   .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
   .pill:active { transform: scale(0.94); }
 
   /* CHAT */
-  #chat-panel { max-height: 150px; border-bottom: 1px solid var(--border); }
+  #chat-panel { max-height: 203px; border-bottom: 1px solid var(--border); }
   #chat-area {
-    height: 150px; overflow-y: auto; padding: 7px 14px;
-    display: flex; flex-direction: column; gap: 2px; background: var(--chat-bg);
+    height: 203px; overflow-y: auto; padding: 9px 19px;
+    display: flex; flex-direction: column; gap: 3px; background: var(--chat-bg);
   }
-  .chat-msg { font-size: 13px; line-height: 1.6; padding: 3px 0; border-bottom: 1px solid #ffffff05; animation: fadeIn 0.2s; }
+  .chat-msg { font-size: 18px; line-height: 1.6; padding: 4px 0; border-bottom: 1px solid #ffffff05; animation: fadeIn 0.2s; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none} }
-  .chat-user { font-weight: 500; margin-right: 5px; }
+  .chat-user { font-weight: 500; margin-right: 7px; }
   .chat-text { color: #8080a0; }
-  .empty-state { color: var(--muted); font-size: 11px; text-align: center; padding: 16px 0; }
+  .empty-state { color: var(--muted); font-size: 15px; text-align: center; padding: 22px 0; }
 
   /* GEN BAR */
   #gen-bar {
-    padding: 8px 14px; display: flex; gap: 8px;
+    padding: 11px 19px; display: flex; gap: 11px;
     flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border);
   }
   .btn-gen {
@@ -149,27 +149,27 @@
 
   /* RESPONSES */
   #responses-area {
-    flex: 1; overflow-y: auto; padding: 10px 12px;
-    display: flex; flex-direction: column; gap: 8px; min-height: 0;
+    flex: 1; overflow-y: auto; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 11px; min-height: 0;
   }
 
   .response-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px 14px 16px 16px; display: flex; align-items: flex-start;
-    gap: 12px; flex-shrink: 0; transition: border-color 0.2s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px 19px 22px 22px; display: flex; align-items: flex-start;
+    gap: 16px; flex-shrink: 0; transition: border-color 0.2s;
   }
   .response-card.speaking { border-color: var(--accent2); }
 
   .rnum {
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px;
-    color: var(--accent); line-height: 1; flex-shrink: 0; margin-top: 2px; width: 26px;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 35px;
+    color: var(--accent); line-height: 1; flex-shrink: 0; margin-top: 3px; width: 35px;
   }
-  .rtext { font-size: 16px; line-height: 1.7; color: var(--text); flex: 1; }
+  .rtext { font-size: 15px; line-height: 1.7; color: var(--text); flex: 1; }
 
-  .card-btns { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+  .card-btns { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
   .btn-speak, .btn-stop {
-    width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 15px;
+    width: 49px; height: 49px; border-radius: 11px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
   }
   .btn-speak { background: var(--accent); }
   .btn-speak:active { transform: scale(0.88); }
@@ -179,12 +179,12 @@
   .response-card.speaking .btn-stop { display: flex; animation: pulse 0.6s infinite alternate; }
 
   .loader {
-    display: flex; align-items: center; gap: 10px; padding: 16px 14px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    color: var(--muted); font-size: 12px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px; padding: 22px 19px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    color: var(--muted); font-size: 16px; flex-shrink: 0;
   }
   .spinner {
-    width: 15px; height: 15px; border: 2px solid var(--border);
+    width: 20px; height: 20px; border: 3px solid var(--border);
     border-top-color: var(--accent); border-radius: 50%;
     animation: spin 0.7s linear infinite; flex-shrink: 0;
   }
@@ -200,27 +200,27 @@
   #fs-view.active { display: flex; }
 
   #fs-topbar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
 
   #fs-status-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+    width: 11px; height: 11px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
   }
-  #fs-status-label { font-size: 11px; color: var(--muted); }
+  #fs-status-label { font-size: 15px; color: var(--muted); }
 
-  .fs-verbosity { display: flex; gap: 6px; align-items: center; }
+  .fs-verbosity { display: flex; gap: 8px; align-items: center; }
 
   #fs-suggest-btn {
     background: linear-gradient(135deg, var(--accent), #9b6aff);
-    color: white; padding: 9px 20px; font-size: 13px; margin-left: auto;
+    color: white; padding: 12px 27px; font-size: 18px; margin-left: auto;
   }
   #fs-suggest-btn:disabled { opacity: 0.35; cursor: default; }
   #fs-suggest-btn:not(:disabled):active { transform: scale(0.96); }
 
   .btn-exit-fs {
     background: none; border: 1px solid var(--border); color: var(--muted);
-    font-size: 11px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 15px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
     font-family: 'DM Mono', monospace; flex-shrink: 0;
   }
   .btn-exit-fs:hover { border-color: var(--accent2); color: var(--accent2); }
@@ -228,27 +228,41 @@
   #fs-body { flex: 1; display: flex; min-height: 0; overflow: hidden; position: relative; }
 
   #fs-responses {
-    flex: 1; overflow-y: auto; padding: 14px 16px;
-    display: flex; flex-direction: column; gap: 10px; min-height: 0;
+    flex: 1; overflow: hidden; padding: 10px 16px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 0;
   }
+
+  /* Fullscreen empty state with prominent suggest button */
+  #fs-empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 27px; flex: 1; padding: 54px;
+  }
+  #fs-suggest-prominent {
+    background: linear-gradient(135deg, var(--accent), #9b6aff);
+    color: white; padding: 22px 54px; font-size: 24px; border-radius: 16px;
+  }
+  #fs-suggest-prominent:disabled { opacity: 0.35; cursor: default; }
+  #fs-suggest-prominent:not(:disabled):active { transform: scale(0.96); }
+  #fs-suggest-prominent:not(:disabled):hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(124,106,255,0.4); }
+  .fs-empty-hint { color: var(--muted); font-size: 18px; }
 
   .fs-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 18px 16px 18px 18px; display: flex; align-items: flex-start;
-    gap: 12px; flex-shrink: 0; transition: border-color 0.2s, background 0.2s;
+    padding: 10px 14px 10px 16px; display: flex; align-items: center;
+    gap: 12px; flex: 1; min-height: 0; transition: border-color 0.2s, background 0.2s;
   }
   .fs-card.speaking { border-color: var(--accent2); background: #1a0f18; }
 
   .fs-rnum {
     font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px;
-    color: var(--accent); line-height: 1; flex-shrink: 0; width: 28px; margin-top: 2px;
+    color: var(--accent); line-height: 1; flex-shrink: 0; width: 28px;
   }
-  .fs-rtext { font-size: 17px; line-height: 1.7; color: var(--text); flex: 1; }
+  .fs-rtext { font-size: 15px; line-height: 1.5; color: var(--text); flex: 1; }
 
   .fs-card-btns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
   .fs-speak, .fs-stop {
-    width: 44px; height: 44px; border-radius: 10px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    width: 48px; height: 48px; border-radius: 11px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
   }
   .fs-speak { background: var(--accent); }
   .fs-speak:active { transform: scale(0.88); }
@@ -258,7 +272,7 @@
   .fs-card.speaking .fs-stop { display: flex; animation: pulse 0.6s infinite alternate; }
 
   #fs-chat-panel {
-    width: 240px; flex-shrink: 0; border-left: 1px solid var(--border);
+    width: 324px; flex-shrink: 0; border-left: 1px solid var(--border);
     display: flex; flex-direction: column;
     transition: width 0.22s ease, opacity 0.2s ease; overflow: hidden;
   }
@@ -266,27 +280,52 @@
 
   #fs-chat-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 12px; border-bottom: 1px solid var(--border);
-    flex-shrink: 0; font-size: 11px; color: var(--muted);
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; font-size: 15px; color: var(--muted);
   }
 
   .btn-close-chat {
     background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 14px; padding: 2px 4px; line-height: 1;
+    font-size: 19px; padding: 3px 5px; line-height: 1;
   }
   .btn-close-chat:hover { color: var(--accent2); }
 
   #fs-chat-area {
-    flex: 1; overflow-y: auto; padding: 8px 10px;
-    display: flex; flex-direction: column; gap: 2px;
-    background: var(--chat-bg); font-size: 11px;
+    flex: 1; overflow-y: auto; padding: 11px 14px;
+    display: flex; flex-direction: column; gap: 3px;
+    background: var(--chat-bg); font-size: 15px;
+  }
+
+  #fs-new-msgs-btn {
+    display: none; flex-shrink: 0;
+    background: var(--accent); color: white; border: none; border-radius: 0;
+    font-family: 'DM Mono', monospace; font-size: 15px;
+    padding: 10px 14px; cursor: pointer; text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.1); transition: background 0.15s;
+  }
+  #fs-new-msgs-btn:hover { background: #9b6aff; }
+
+  /* Selectable chat messages in fullscreen */
+  .fs-chat-msg {
+    font-size: 15px; line-height: 1.6; padding: 7px 8px; border-radius: 8px;
+    border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+    animation: fadeIn 0.2s;
+  }
+  .fs-chat-msg:hover { background: rgba(124,106,255,0.08); border-color: rgba(124,106,255,0.2); }
+  .fs-chat-msg.selected {
+    background: rgba(124,106,255,0.15); border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(124,106,255,0.3);
+  }
+  .fs-selected-label {
+    font-size: 12px; color: var(--accent); display: block; margin-bottom: 3px;
+    text-transform: uppercase; letter-spacing: 0.05em;
   }
 
   #fs-open-chat {
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     background: var(--surface); border: 1px solid var(--border);
-    border-right: none; border-radius: 8px 0 0 8px;
-    color: var(--muted); font-size: 10px; padding: 10px 6px;
+    border-right: none; border-radius: 11px 0 0 11px;
+    color: var(--muted); font-size: 14px; padding: 14px 8px;
     cursor: pointer; font-family: 'DM Mono', monospace;
     writing-mode: vertical-rl; display: none; transition: color 0.15s;
   }
@@ -294,13 +333,13 @@
   #fs-open-chat.visible { display: block; }
 
   .fs-loader {
-    display: flex; align-items: center; gap: 10px; padding: 20px 18px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    color: var(--muted); font-size: 13px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px; padding: 27px 24px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 19px;
+    color: var(--muted); font-size: 18px; flex-shrink: 0;
   }
 
-  ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -340,7 +379,7 @@
 
   <div id="verbosity-bar">
     <label>length</label>
-    <button class="pill active" data-v="short" onclick="setV(this)">~5 words</button>
+    <button class="pill active" data-v="short" onclick="setV(this)">short</button>
     <button class="pill" data-v="medium" onclick="setV(this)">1 sentence</button>
     <button class="pill" data-v="long" onclick="setV(this)">longer</button>
   </div>
@@ -352,7 +391,7 @@
   </div>
 
   <div id="gen-bar">
-    <button class="btn-gen" id="gen-btn" onclick="gen(false)" disabled>suggest</button>
+    <button class="btn-gen" id="gen-btn" onclick="startGenerating()">start generating</button>
   </div>
 
   <div id="responses-area">
@@ -368,8 +407,8 @@
     <div id="fs-status-dot"></div>
     <div id="fs-status-label">not connected</div>
     <div class="fs-verbosity" style="margin-left:12px">
-      <label style="font-size:10px;color:var(--muted);margin-right:2px">length</label>
-      <button class="pill active" data-fv="short" onclick="setFV(this)">~5 words</button>
+      <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
+      <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
       <button class="pill" data-fv="medium" onclick="setFV(this)">1 sentence</button>
       <button class="pill" data-fv="long" onclick="setFV(this)">longer</button>
     </div>
@@ -379,16 +418,20 @@
 
   <div id="fs-body">
     <div id="fs-responses">
-      <div class="empty-state">hit suggest to generate responses</div>
+      <div id="fs-empty-state">
+        <button id="fs-suggest-prominent" onclick="gen(true)" disabled>suggest</button>
+        <div class="fs-empty-hint">hit suggest to generate responses</div>
+      </div>
     </div>
     <div id="fs-chat-panel">
       <div id="fs-chat-header">
-        <span>chat</span>
+        <span>chat · tap to select</span>
         <button class="btn-close-chat" onclick="closeFsChat()" aria-label="Close chat panel">‹</button>
       </div>
       <div id="fs-chat-area">
         <div class="empty-state" style="padding:20px 6px">connect to see chat</div>
       </div>
+      <button id="fs-new-msgs-btn" onclick="acceptNewMessages()">↓ <span id="fs-new-msgs-count"></span> new messages</button>
     </div>
     <button id="fs-open-chat" onclick="openFsChat()" aria-label="Open chat panel">chat ›</button>
   </div>
@@ -402,12 +445,15 @@ const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
 // ── STATE ──
 let ws = null, messages = [], isConnected = false, speakingCard = null;
 let verbosity = 'short';
+let selectedMsg = null;     // { user, text } — fullscreen selected chat message
+let pendingFsGen = false;   // set true when startGenerating() triggers an auto-connect
+let bufferedFsMsgs = [];    // fs-chat messages held while a selection is active
 const MAX_MSG = 40;
 
 const VLENGTH = {
-  short:  'Each response must be ~5 words — very short, punchy, natural spoken fragments.',
-  medium: 'Each response is exactly one sentence, 10–20 words.',
-  long:   'Each response is 2–3 sentences, expansive and conversational.'
+  short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',
+  medium: 'All responses are approximately one sentence, 10–20 words each. The bonus option can be shorter or longer as feels right.',
+  long:   'All responses are 2–3 sentences, expansive and conversational. The bonus option can vary in length as appropriate.'
 };
 
 // ── LOCALSTORAGE: load saved values on startup ──
@@ -461,6 +507,26 @@ function openFsChat() {
   document.getElementById('fs-open-chat').classList.remove('visible');
 }
 
+// ── START GENERATING (main page button) ──
+function startGenerating() {
+  if (isConnected) {
+    enterFS();
+    if (messages.length) gen(true);
+    return;
+  }
+  // Not connected — try to connect first
+  const ch = document.getElementById('channel-input').value.trim();
+  if (!ch) {
+    // No channel set — open setup panel and focus the input
+    const sp = document.getElementById('setup-panel');
+    if (sp.classList.contains('closed')) toggleSetup();
+    document.getElementById('channel-input').focus();
+    return;
+  }
+  pendingFsGen = true;
+  connect();
+}
+
 // ── VERBOSITY ──
 function setV(btn) {
   document.querySelectorAll('.pill[data-v]').forEach(p => p.classList.remove('active'));
@@ -485,6 +551,13 @@ function setStatus(cls, txt) {
   document.getElementById('fs-status-label').textContent = txt;
 }
 
+// ── FS SUGGEST BUTTONS: enable/disable both at once ──
+function setFsSuggestEnabled(enabled) {
+  document.getElementById('fs-suggest-btn').disabled = !enabled;
+  const prominent = document.getElementById('fs-suggest-prominent');
+  if (prominent) prominent.disabled = !enabled;
+}
+
 // ── CONNECT ──
 function toggleConnect() { isConnected ? disconnect() : connect(); }
 
@@ -497,37 +570,47 @@ function connect() {
   const btn = document.getElementById('connect-btn');
   btn.textContent = '…';
 
-  ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+
+  const sock = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  ws = sock;
   ws.onopen = () => {
-    ws.send('PASS oauth:justinfan12345');
-    ws.send('NICK justinfan12345');
-    ws.send('JOIN #' + ch);
+    if (ws !== sock) return;
+    sock.send('PASS oauth:justinfan12345');
+    sock.send('NICK justinfan12345');
+    sock.send('JOIN #' + ch);
   };
   ws.onmessage = (e) => {
     const raw = e.data.trim();
-    if (raw.includes('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
+    if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
     if (raw.includes('366')) {
       isConnected = true;
       setStatus('connected', '#' + ch);
       btn.textContent = 'leave'; btn.className = 'btn-connect off';
-      document.getElementById('gen-btn').disabled = false;
-      document.getElementById('fs-suggest-btn').disabled = false;
+      setFsSuggestEnabled(true);
       clearEmptyMsg();
       const sp = document.getElementById('setup-panel');
       if (!sp.classList.contains('closed')) toggleSetup();
+      // If triggered by startGenerating(), enter FS and run suggest
+      if (pendingFsGen) {
+        pendingFsGen = false;
+        enterFS();
+        if (messages.length) gen(true);
+      }
     }
     const m = raw.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
     if (m) addMsg(m[1], m[2]);
   };
   ws.onerror = () => {
     setStatus('error', 'error'); btn.textContent = 'retry'; btn.className = 'btn-connect'; isConnected = false;
+    pendingFsGen = false;
   };
   ws.onclose = () => {
     if (!isConnected) return;
     setStatus('error', 'disconnected'); isConnected = false;
     btn.textContent = 'connect'; btn.className = 'btn-connect';
-    document.getElementById('gen-btn').disabled = true;
-    document.getElementById('fs-suggest-btn').disabled = true;
+    setFsSuggestEnabled(false);
+    pendingFsGen = false;
   };
 }
 
@@ -536,8 +619,7 @@ function disconnect() {
   isConnected = false; setStatus('', 'not connected');
   const btn = document.getElementById('connect-btn');
   btn.textContent = 'connect'; btn.className = 'btn-connect';
-  document.getElementById('gen-btn').disabled = true;
-  document.getElementById('fs-suggest-btn').disabled = true;
+  setFsSuggestEnabled(false);
 }
 
 // ── CHAT ──
@@ -547,15 +629,71 @@ function clearEmptyMsg() {
 }
 
 function addMsg(user, text) {
-  messages.push({ user, text });
+  const msgObj = { user, text };
+  messages.push(msgObj);
   if (messages.length > MAX_MSG) messages.shift();
+
   const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
   const col = cols[user.charCodeAt(0) % cols.length];
-  const html = `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`;
+
+  // Compact chat (read-only)
+  const compactHtml = `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`;
   const ca = document.getElementById('chat-area');
-  ca.insertAdjacentHTML('beforeend', html); ca.scrollTop = ca.scrollHeight;
+  ca.insertAdjacentHTML('beforeend', compactHtml); ca.scrollTop = ca.scrollHeight;
+
+  // Fullscreen chat (selectable)
+  const fsEl = document.createElement('div');
+  fsEl.className = 'fs-chat-msg';
+  fsEl.innerHTML = `<span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span>`;
+  fsEl.addEventListener('click', () => {
+    if (selectedMsg === msgObj) {
+      // Toggle off — flush buffer
+      clearSelection();
+      flushBufferedFsMsgs();
+    } else {
+      // Deselect previous, select this one
+      clearSelection();
+      selectedMsg = msgObj;
+      fsEl.classList.add('selected');
+      const lbl = document.createElement('span');
+      lbl.className = 'fs-selected-label';
+      lbl.textContent = '▶ responding to';
+      fsEl.prepend(lbl);
+    }
+  });
+
+  if (selectedMsg) {
+    // Buffer this message while a selection is active
+    bufferedFsMsgs.push(fsEl);
+    const btn = document.getElementById('fs-new-msgs-btn');
+    btn.style.display = 'block';
+    document.getElementById('fs-new-msgs-count').textContent = bufferedFsMsgs.length;
+  } else {
+    const fca = document.getElementById('fs-chat-area');
+    fca.appendChild(fsEl); fca.scrollTop = fca.scrollHeight;
+  }
+}
+
+function clearSelection() {
+  selectedMsg = null;
+  document.querySelectorAll('.fs-chat-msg.selected').forEach(el => {
+    el.classList.remove('selected');
+    const lbl = el.querySelector('.fs-selected-label');
+    if (lbl) lbl.remove();
+  });
+}
+
+function flushBufferedFsMsgs() {
   const fca = document.getElementById('fs-chat-area');
-  fca.insertAdjacentHTML('beforeend', html); fca.scrollTop = fca.scrollHeight;
+  bufferedFsMsgs.forEach(el => fca.appendChild(el));
+  bufferedFsMsgs = [];
+  fca.scrollTop = fca.scrollHeight;
+  document.getElementById('fs-new-msgs-btn').style.display = 'none';
+}
+
+function acceptNewMessages() {
+  clearSelection();
+  flushBufferedFsMsgs();
 }
 
 function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -570,19 +708,29 @@ async function gen(isFs=false) {
   handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   const ctx = document.getElementById('ctx-input').value.trim();
 
+  // Build selected-message focus context (fullscreen only)
+  const selectedContext = (isFs && selectedMsg)
+    ? `\n\nThe streamer has selected this specific message to respond to — prioritize crafting responses that directly address it: "${selectedMsg.user}: ${selectedMsg.text}"`
+    : '';
+
   const loader = `<div class="${isFs?'fs-loader':'loader'}"><div class="spinner"></div>generating…</div>`;
-  if (isFs) { document.getElementById('fs-responses').innerHTML = loader; document.getElementById('fs-suggest-btn').disabled = true; }
-  else { document.getElementById('responses-area').innerHTML = loader; document.getElementById('gen-btn').disabled = true; }
+  if (isFs) {
+    document.getElementById('fs-responses').innerHTML = loader;
+    setFsSuggestEnabled(false);
+  } else {
+    document.getElementById('responses-area').innerHTML = loader;
+    document.getElementById('gen-btn').disabled = true;
+  }
 
   const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
 
 Length rule: ${VLENGTH[verbosity]}
 
-Generate exactly 3 options varying tone: one warm/engaged, one witty/playful, one direct.
-Reply ONLY with valid JSON, no other text: {"responses":["...","...","..."]}
+Generate exactly 4 options varying in tone: one warm/engaged, one witty/playful, one direct, one bonus of whatever tone fits best.
+Reply ONLY with valid JSON, no other text: {"responses":["...","...","...","..."]}
 
 Recent chat:
-${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}`;
+${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}${selectedContext}`;
 
   try {
     const r = await fetch(`${PROXY_URL}/v1/messages`, {
@@ -590,7 +738,7 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
+        max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -599,8 +747,9 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
     if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error));
 
     const raw = d.content?.[0]?.text ?? '';
-    const clean = raw.trim().replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+    const parsed = JSON.parse(jsonMatch[0]);
 
     if (isFs) renderFsCards(parsed.responses);
     else renderCards(parsed.responses);
@@ -609,7 +758,7 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
     if (isFs) document.getElementById('fs-responses').innerHTML = errHtml;
     else document.getElementById('responses-area').innerHTML = errHtml;
   } finally {
-    if (isFs) document.getElementById('fs-suggest-btn').disabled = false;
+    if (isFs) setFsSuggestEnabled(true);
     else document.getElementById('gen-btn').disabled = false;
   }
 }
@@ -647,6 +796,8 @@ function renderFsCards(responses) {
 // ── SPEECH ──
 function speak(text, card) {
   stopSpeak();
+  clearSelection();
+  flushBufferedFsMsgs();
   speakingCard = card;
   card.classList.add('speaking');
   const u = new SpeechSynthesisUtterance(text);
