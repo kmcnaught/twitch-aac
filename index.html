@@ -518,7 +518,6 @@ function startGenerating() {
   const ch = document.getElementById('channel-input').value.trim();
   if (!ch) {
     // No channel set — open setup panel and focus the input
-    const sp = document.getElementById('setup-panel');
     if (sp.classList.contains('closed')) toggleSetup();
     document.getElementById('channel-input').focus();
     return;
@@ -589,8 +588,6 @@ function connect() {
       btn.textContent = 'leave'; btn.className = 'btn-connect off';
       setFsSuggestEnabled(true);
       clearEmptyMsg();
-      const sp = document.getElementById('setup-panel');
-      if (!sp.classList.contains('closed')) toggleSetup();
       // If triggered by startGenerating(), enter FS and run suggest
       if (pendingFsGen) {
         pendingFsGen = false;
