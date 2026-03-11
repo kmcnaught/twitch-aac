@@ -4,458 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>StreamAAC</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
-
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --border: #1e1e2e;
-    --accent: #7c6aff;
-    --accent2: #ff6a9b;
-    --text: #e2e2f0;
-    --muted: #8080a8;
-    --chat-bg: #0e0e16;
-    --success: #4ade80;
-    --border-ui: #404068;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; height: 100dvh; overflow: hidden; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-  }
-
-  /* ═══════════════════════════════════
-     COMPACT VIEW
-  ═══════════════════════════════════ */
-  #compact-view {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-  }
-
-  header {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 14px 19px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 23px;
-    background: linear-gradient(120deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .status-dot {
-    width: 11px; height: 11px; border-radius: 50%;
-    background: var(--muted); transition: background 0.3s; flex-shrink: 0;
-  }
-  .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2s infinite; }
-  .status-dot.connecting { background: #facc15; }
-  .status-dot.error { background: var(--accent2); }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
-
-  .status-label { font-size: 18px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  .hbtn {
-    background: none; border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 16px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
-    font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
-  }
-  .hbtn:hover { border-color: var(--accent); color: var(--accent); }
-
-  .collapsible { overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s ease; flex-shrink: 0; }
-  .collapsible.closed { max-height: 0 !important; opacity: 0; pointer-events: none; }
-
-  /* SETUP */
-  #setup-panel { max-height: 460px; border-bottom: 1px solid var(--border); }
-  #setup-inner { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
-
-  .row { display: flex; gap: 11px; align-items: center; }
-  label { font-size: 16px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-
-  input[type="text"], input[type="password"] {
-    background: var(--surface); border: 1px solid var(--border-ui); border-radius: 11px;
-    padding: 14px 18px; color: var(--text); font-family: 'DM Mono', monospace;
-    font-size: 19px; flex: 1; outline: none; transition: border-color 0.2s; min-width: 0;
-  }
-  input:focus { border-color: var(--accent); }
-  input::placeholder { color: var(--muted); }
-
-  button {
-    font-family: 'DM Mono', monospace; font-size: 19px; border: none;
-    border-radius: 11px; cursor: pointer; transition: all 0.15s;
-    padding: 14px 20px; font-weight: 500;
-  }
-
-  .btn-connect { background: var(--accent); color: white; flex-shrink: 0; }
-  .btn-connect:active { transform: scale(0.96); }
-  .btn-connect.off { background: var(--border); color: var(--muted); }
-
-  .key-hint {
-    font-size: 16px; color: var(--muted);
-    padding: 0 3px;
-  }
-  .key-hint a { color: var(--accent); text-decoration: none; }
-  .key-hint a:hover { text-decoration: underline; }
-
-  /* VERBOSITY */
-  #verbosity-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 19px; border-bottom: 1px solid var(--border);
-    flex-shrink: 0; background: var(--surface);
-  }
-
-  .pill {
-    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 18px; padding: 8px 16px; border-radius: 27px; cursor: pointer;
-    font-family: 'DM Mono', monospace; transition: all 0.15s; white-space: nowrap;
-  }
-  .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
-  .pill:active { transform: scale(0.94); }
-
-  /* CHAT */
-  #chat-panel { max-height: 203px; border-bottom: 1px solid var(--border); }
-  #chat-area {
-    height: 203px; overflow-y: auto; padding: 9px 19px;
-    display: flex; flex-direction: column; gap: 3px; background: var(--chat-bg);
-  }
-  .chat-msg { font-size: 18px; line-height: 1.6; padding: 4px 0; border-bottom: 1px solid #ffffff05; animation: fadeIn 0.2s; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none} }
-  .chat-user { font-weight: 500; margin-right: 7px; }
-  .chat-text { color: #8080a0; }
-  .empty-state { color: var(--muted); font-size: 15px; text-align: center; padding: 22px 0; }
-
-  /* GEN BAR */
-  #gen-bar {
-    padding: 11px 19px; display: flex; gap: 11px;
-    flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border);
-  }
-  .btn-gen {
-    background: linear-gradient(135deg, var(--accent), #9b6aff);
-    color: white; flex-shrink: 0;
-  }
-  .btn-gen:disabled { opacity: 0.35; cursor: default; }
-  .btn-gen:not(:disabled):active { transform: scale(0.96); }
-
-  /* RESPONSES */
-  #responses-area {
-    flex: 1; overflow-y: auto; padding: 14px 16px;
-    display: flex; flex-direction: column; gap: 11px; min-height: 0;
-  }
-
-  .response-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 22px 19px 22px 22px; display: flex; align-items: flex-start;
-    gap: 16px; flex-shrink: 0; transition: border-color 0.2s;
-  }
-  .response-card.speaking { border-color: var(--accent2); }
-
-  .rnum {
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 35px;
-    color: var(--accent); line-height: 1; flex-shrink: 0; margin-top: 3px; width: 35px;
-  }
-  .rtext { font-size: 15px; line-height: 1.7; color: var(--text); flex: 1; }
-
-  .card-btns { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
-  .btn-speak, .btn-stop {
-    width: 49px; height: 49px; border-radius: 11px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 20px;
-  }
-  .btn-speak { background: var(--accent); }
-  .btn-speak:active { transform: scale(0.88); }
-  .btn-stop { background: var(--accent2); display: none; }
-  .btn-stop:active { transform: scale(0.88); }
-  .response-card.speaking .btn-speak { display: none; }
-  .response-card.speaking .btn-stop { display: flex; animation: pulse 0.6s infinite alternate; }
-
-  .loader {
-    display: flex; align-items: center; gap: 14px; padding: 22px 19px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    color: var(--muted); font-size: 16px; flex-shrink: 0;
-  }
-  .spinner {
-    width: 20px; height: 20px; border: 3px solid var(--border);
-    border-top-color: var(--accent); border-radius: 50%;
-    animation: spin 0.7s linear infinite; flex-shrink: 0;
-  }
-  @keyframes spin { to{transform:rotate(360deg)} }
-
-  /* ═══════════════════════════════════
-     FULLSCREEN VIEW
-  ═══════════════════════════════════ */
-  #fs-view {
-    --fs-font-size: 17px;
-    display: none; position: fixed; inset: 0; z-index: 100;
-    background: var(--bg); flex-direction: column;
-  }
-  #fs-view.active { display: flex; }
-
-  #fs-topbar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
-
-  #fs-status-dot {
-    width: 11px; height: 11px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
-  }
-  #fs-status-label { font-size: 15px; color: var(--muted); }
-
-  .fs-verbosity { display: flex; gap: 8px; align-items: center; }
-
-  #fs-suggest-btn {
-    background: linear-gradient(135deg, var(--accent), #9b6aff);
-    color: white; padding: 12px 27px; font-size: 18px; margin-left: auto;
-  }
-  #fs-suggest-btn:disabled { opacity: 0.35; cursor: default; }
-  #fs-suggest-btn:not(:disabled):active { transform: scale(0.96); }
-
-  .btn-exit-fs {
-    background: none; border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 15px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
-    font-family: 'DM Mono', monospace; flex-shrink: 0;
-  }
-  .btn-exit-fs:hover { border-color: var(--accent2); color: var(--accent2); }
-
-  #fs-body { flex: 1; display: flex; min-height: 0; overflow: hidden; position: relative; }
-
-  #fs-responses {
-    flex: 1; overflow: hidden; padding: 10px 16px;
-    display: flex; flex-direction: column; gap: 8px; min-height: 0;
-  }
-
-  /* Fullscreen empty state with prominent suggest button */
-  #fs-empty-state {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 27px; flex: 1; padding: 54px;
-  }
-  #fs-suggest-prominent {
-    background: linear-gradient(135deg, var(--accent), #9b6aff);
-    color: white; padding: 22px 54px; font-size: 24px; border-radius: 16px;
-  }
-  #fs-suggest-prominent:disabled { opacity: 0.35; cursor: default; }
-  #fs-suggest-prominent:not(:disabled):active { transform: scale(0.96); }
-  #fs-suggest-prominent:not(:disabled):hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(124,106,255,0.4); }
-  .fs-empty-hint { color: var(--muted); font-size: 18px; }
-
-  .fs-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 10px 14px 10px 16px; display: flex; align-items: center;
-    gap: 12px; flex: 1; min-height: 0; transition: border-color 0.2s, background 0.2s;
-  }
-  .fs-card.speaking { border-color: var(--accent2); background: #1a0f18; }
-
-  .fs-rnum {
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px;
-    color: var(--accent); line-height: 1; flex-shrink: 0; width: 28px;
-  }
-  .fs-rtext { font-size: var(--fs-font-size); line-height: 1.5; color: var(--text); flex: 1; }
-
-  .fs-card-btns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .fs-speak, .fs-stop {
-    width: 48px; height: 48px; border-radius: 11px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 20px;
-  }
-  .fs-speak { background: var(--accent); }
-  .fs-speak:active { transform: scale(0.88); }
-  .fs-stop { background: var(--accent2); display: none; }
-  .fs-stop:active { transform: scale(0.88); }
-  .fs-card.speaking .fs-speak { display: none; }
-  .fs-card.speaking .fs-stop { display: flex; animation: pulse 0.6s infinite alternate; }
-
-  #fs-chat-panel {
-    width: 324px; flex-shrink: 0; border-left: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    transition: width 0.22s ease, opacity 0.2s ease; overflow: hidden;
-  }
-  #fs-chat-panel.closed { width: 0; opacity: 0; pointer-events: none; border-left: none; }
-
-  #fs-chat-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
-    flex-shrink: 0; font-size: 15px; color: var(--muted);
-  }
-
-  .btn-close-chat {
-    background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 19px; padding: 3px 5px; line-height: 1;
-  }
-  .btn-close-chat:hover { color: var(--accent2); }
-
-  #fs-chat-area {
-    flex: 1; overflow-y: auto; padding: 11px 14px;
-    display: flex; flex-direction: column; gap: 3px;
-    background: var(--chat-bg); font-size: 15px;
-  }
-
-  #fs-new-msgs-btn {
-    display: none; flex-shrink: 0;
-    background: var(--accent); color: white; border: none; border-radius: 0;
-    font-family: 'DM Mono', monospace; font-size: 15px;
-    padding: 10px 14px; cursor: pointer; text-align: center;
-    border-top: 1px solid rgba(255,255,255,0.1); transition: background 0.15s;
-  }
-  #fs-new-msgs-btn:hover { background: #9b6aff; }
-
-  .fs-font-size-ctrl {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .fs-font-size-ctrl button {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px 9px;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    line-height: 1;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .fs-font-size-ctrl button:hover {
-    border-color: var(--accent);
-    color: var(--text);
-  }
-
-  /* Selectable chat messages in fullscreen */
-  .fs-chat-msg {
-    font-size: var(--fs-font-size); line-height: 1.6; padding: 7px 8px; border-radius: 8px;
-    border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
-    animation: fadeIn 0.2s;
-  }
-  .fs-chat-msg:hover { background: rgba(124,106,255,0.08); border-color: rgba(124,106,255,0.2); }
-  .fs-chat-msg.selected {
-    background: rgba(124,106,255,0.15); border-color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(124,106,255,0.3);
-  }
-  .fs-selected-label {
-    font-size: 12px; color: var(--accent); display: block; margin-bottom: 3px;
-    text-transform: uppercase; letter-spacing: 0.05em;
-  }
-
-  #fs-open-chat {
-    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-    background: var(--surface); border: 1px solid var(--border);
-    border-right: none; border-radius: 11px 0 0 11px;
-    color: var(--muted); font-size: 14px; padding: 14px 8px;
-    cursor: pointer; font-family: 'DM Mono', monospace;
-    writing-mode: vertical-rl; display: none; transition: color 0.15s;
-  }
-  #fs-open-chat:hover { color: var(--accent); }
-  #fs-open-chat.visible { display: block; }
-
-  .fs-loader {
-    display: flex; align-items: center; gap: 14px; padding: 27px 24px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 19px;
-    color: var(--muted); font-size: 18px; flex-shrink: 0;
-  }
-
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-  /* VOICE MODAL */
-  .modal-overlay {
-    position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,0.65);
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.18s;
-  }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-
-  .modal-dialog {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 18px; width: min(400px, calc(100vw - 28px));
-    max-height: calc(100dvh - 48px); overflow-y: auto;
-    padding: 22px 24px;
-    transform: translateY(10px); transition: transform 0.18s;
-  }
-  .modal-overlay.open .modal-dialog { transform: translateY(0); }
-
-  .modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 22px;
-  }
-  .modal-title {
-    font-family: 'Syne', sans-serif; font-weight: 700;
-    font-size: 17px; color: var(--text);
-  }
-  .modal-close {
-    background: none; border: none; color: var(--muted);
-    font-size: 17px; cursor: pointer; padding: 4px 8px;
-    border-radius: 6px; line-height: 1; transition: color 0.15s;
-  }
-  .modal-close:hover { color: var(--text); }
-
-  .voice-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-  .voice-row:last-child { margin-bottom: 0; }
-  .voice-row label { font-size: 15px; color: var(--muted); white-space: nowrap; flex-shrink: 0; min-width: 84px; }
-
-  .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
-  .modal-subsection-label {
-    font-size: 12px; color: var(--muted); letter-spacing: 0.07em;
-    text-transform: uppercase; margin-bottom: 14px;
-  }
-
-  .source-pills { display: flex; gap: 7px; }
-  .spill {
-    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
-    font-family: 'DM Mono', monospace; transition: all 0.15s;
-  }
-  .spill.active { background: var(--accent); border-color: var(--accent); color: white; }
-  .spill:active { transform: scale(0.94); }
-
-  #voice-modal select {
-    background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
-    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
-    font-size: 15px; flex: 1; outline: none; cursor: pointer; min-width: 0;
-    transition: border-color 0.2s; appearance: none;
-  }
-  #voice-modal select:focus { border-color: var(--accent); }
-  #voice-modal select option { background: var(--surface); }
-  #voice-modal input[type="password"] {
-    background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
-    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
-    font-size: 15px; flex: 1; outline: none; min-width: 0; transition: border-color 0.2s;
-  }
-  #voice-modal input[type="password"]:focus { border-color: var(--accent); }
-
-  .btn-load {
-    background: var(--surface); border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 15px; padding: 10px 16px; border-radius: 9px; cursor: pointer;
-    font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .btn-load:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-load:disabled { opacity: 0.4; cursor: default; }
-
-  .voice-status { font-size: 14px; color: var(--muted); }
-  .voice-status.ok { color: var(--success); }
-  .voice-status.err { color: var(--accent2); }
-
-  .gender-pills { display: flex; gap: 7px; }
-  .gpill {
-    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
-    font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
-    font-family: 'DM Mono', monospace; transition: all 0.15s;
-  }
-  .gpill.active { background: var(--accent2); border-color: var(--accent2); color: white; }
-  .gpill:active { transform: scale(0.94); }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -469,6 +18,7 @@
     <button class="hbtn" id="setup-btn" onclick="toggleSetup()" aria-expanded="true" aria-controls="setup-panel">setup ▲</button>
     <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
     <button class="hbtn" id="chat-btn" onclick="toggleChat()" aria-expanded="true" aria-controls="chat-panel">chat ▲</button>
+    <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
     <button class="hbtn" onclick="enterFS()" aria-label="Enter fullscreen">⛶</button>
   </header>
 
@@ -603,6 +153,7 @@
       <button id="fs-font-up" title="Increase font size">A<sup>+</sup></button>
     </div>
     <button id="fs-suggest-btn" class="btn-gen" onclick="gen(true)" disabled>suggest</button>
+    <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
     <button class="btn-exit-fs" onclick="exitFS()">✕ exit</button>
   </div>
 
@@ -637,6 +188,7 @@ let ws = null, messages = [], isConnected = false, speakingCard = null;
 let verbosity = 'short';
 let selectedMsg = null;     // { user, text } — fullscreen selected chat message
 let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '17');
+let theme = localStorage.getItem('theme') || 'dark';
 let pendingFsGen = false;   // set true when startGenerating() triggers an auto-connect
 let bufferedFsMsgs = [];    // fs-chat messages held while a selection is active
 const MAX_MSG = 40;
@@ -652,8 +204,22 @@ const VLENGTH = {
   long:   'All responses are 2–3 sentences, expansive and conversational. The bonus option can vary in length as appropriate.'
 };
 
+// ── THEME ──
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+}
+
 // ── LOCALSTORAGE: load saved values on startup ──
 window.addEventListener('DOMContentLoaded', () => {
+  // Theme
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+
   const savedChannel = localStorage.getItem('twitch_channel');
   const savedHandle = localStorage.getItem('twitch_handle');
   const savedPersona = localStorage.getItem('persona');
