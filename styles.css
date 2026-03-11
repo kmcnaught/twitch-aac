@@ -83,7 +83,8 @@
   .hbtn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* SETUP */
-  #setup-panel { max-height: 460px; min-height: 0; overflow-y: auto; flex-shrink: 1; border-bottom: 1px solid var(--border); }
+  #setup-panel { min-height: 0; overflow-y: auto; flex-shrink: 1; border-bottom: 1px solid var(--border); }
+  #start-bar { padding: 14px 22px; flex-shrink: 0; }
   #setup-inner { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
 
   .row { display: flex; gap: 11px; align-items: center; }
