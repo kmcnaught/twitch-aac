@@ -137,6 +137,12 @@ function connect(rawCh) {
   let ch = rawCh.trim().toLowerCase();
   ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   if (!ch) return;
+  let alertedFailure = false;
+
+  function handleConnectFailure(ch) {
+    alert(`Could not connect to Twitch chat for "${ch}".\nCheck the channel name and try again.`);
+    window.location.href = 'index.html';
+  }
 
   setStatus('connecting', 'connecting…');
 
@@ -165,12 +171,17 @@ function connect(rawCh) {
   ws.onerror = () => {
     setStatus('error', 'connection error');
     isConnected = false;
+    alertedFailure = true;
+    handleConnectFailure(ch);
   };
   ws.onclose = () => {
-    if (!isConnected) return;
-    setStatus('error', 'disconnected');
-    isConnected = false;
-    setFsSuggestEnabled(false);
+    if (isConnected) {
+      setStatus('error', 'disconnected');
+      isConnected = false;
+      setFsSuggestEnabled(false);
+    } else if (!alertedFailure) {
+      handleConnectFailure(ch);
+    }
   };
 }
 

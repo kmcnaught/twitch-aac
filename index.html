@@ -14,8 +14,6 @@
 
   <header>
     <div class="logo">StreamAAC</div>
-    <div class="status-dot" id="status-dot"></div>
-    <div class="status-label" id="status-label">not connected</div>
     <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
     <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
   </header>
@@ -24,7 +22,6 @@
     <div id="setup-inner">
       <div class="row">
         <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-        <button class="btn-connect" id="connect-btn" onclick="toggleConnect()">connect</button>
       </div>
       <div class="row">
         <label for="handle-input">your handle</label>
@@ -60,6 +57,9 @@
         </select>
         <input type="text" id="game-custom-input" placeholder="game name"
                style="display:none" autocorrect="off" spellcheck="false"/>
+      </div>
+      <div class="row">
+        <button class="btn-connect" id="start-btn" onclick="goToChat()" style="width:100%;margin-top:4px">start</button>
       </div>
     </div>
   </div>
@@ -135,26 +135,11 @@
     </div>
   </div>
 
-  <div id="chat-panel">
-    <div id="chat-area">
-      <div class="empty-state" id="empty-msg">connect to see chat</div>
-    </div>
-  </div>
-
-  <div id="gen-bar">
-    <button class="btn-gen" id="gen-btn" onclick="startGenerating()">start generating</button>
-  </div>
-
-  <div id="responses-area">
-  </div>
-
 </div>
 
 <script>
 // ── STATE ──
-let ws = null, chatLog = [], isConnected = false;
 let theme = localStorage.getItem('theme') || 'dark';
-const MAX_MSG = 40;
 
 // ── ELEVENLABS STATE ──
 let elVoices = [];
@@ -379,7 +364,7 @@ function saveBrowserVoice() {
 }
 
 // ── START GENERATING → navigate to chat page ──
-function startGenerating() {
+function goToChat() {
   const ch = document.getElementById('channel-input').value.trim();
   if (!ch) { document.getElementById('channel-input').focus(); return; }
   // Flush all fields to localStorage before navigating
@@ -395,168 +380,6 @@ function startGenerating() {
   window.location.href = 'chat.html';
 }
 
-// ── STATUS ──
-function setStatus(cls, txt) {
-  document.getElementById('status-dot').className = 'status-dot ' + cls;
-  document.getElementById('status-label').textContent = txt;
-}
-
-// ── CONNECT ──
-function toggleConnect() { isConnected ? disconnect() : connect(); }
-
-function connect() {
-  let ch = document.getElementById('channel-input').value.trim().toLowerCase();
-  ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
-  if (!ch) return;
-  setStatus('connecting', 'connecting…');
-  const btn = document.getElementById('connect-btn');
-  btn.textContent = '…';
-
-  if (ws) { ws.onclose = null; ws.close(); ws = null; }
-
-  const sock = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-  ws = sock;
-  ws.onopen = () => {
-    if (ws !== sock) return;
-    sock.send('PASS oauth:justinfan12345');
-    sock.send('NICK justinfan12345');
-    sock.send('JOIN #' + ch);
-  };
-  ws.onmessage = (e) => {
-    const raw = e.data.trim();
-    if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
-    if (raw.includes('366')) {
-      isConnected = true;
-      setStatus('connected', '#' + ch);
-      btn.textContent = 'leave'; btn.className = 'btn-connect off';
-      clearEmptyMsg();
-    }
-    const msg = parseIrcMsg(raw);
-    if (msg) addMsg(msg.user, msg.text, msg.emotesTag);
-  };
-  ws.onerror = () => {
-    setStatus('error', 'error'); btn.textContent = 'retry'; btn.className = 'btn-connect'; isConnected = false;
-  };
-  ws.onclose = () => {
-    if (!isConnected) return;
-    setStatus('error', 'disconnected'); isConnected = false;
-    btn.textContent = 'connect'; btn.className = 'btn-connect';
-  };
-}
-
-function disconnect() {
-  if (ws) ws.close();
-  isConnected = false; setStatus('', 'not connected');
-  const btn = document.getElementById('connect-btn');
-  btn.textContent = 'connect'; btn.className = 'btn-connect';
-}
-
-// ── CHAT ──
-function clearEmptyMsg() {
-  const e = document.getElementById('empty-msg'); if (e) e.remove();
-}
-
-function addMsg(user, rawText, emotesTag) {
-  const llmText = replaceEmotes(rawText, emotesTag);
-  const excluded = isExcluded(user, rawText);
-  chatLog.push({ user, text: llmText, excluded });
-  if (chatLog.length > MAX_MSG) chatLog.shift();
-
-  const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
-  const col = cols[user.charCodeAt(0) % cols.length];
-
-  const ca = document.getElementById('chat-area');
-  ca.insertAdjacentHTML('beforeend',
-    `<div class="chat-msg${excluded ? ' excluded' : ''}"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${renderEmotes(rawText, emotesTag)}</span></div>`);
-  ca.scrollTop = ca.scrollHeight;
-}
-
-// ── GENERATE (compact view) ──
-async function gen() {
-  const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
-  if (!chat) { alert('No chat messages yet'); return; }
-
-  const persona = document.getElementById('persona-input').value.trim() || 'a streamer';
-  let handle = document.getElementById('handle-input').value.trim().toLowerCase();
-  handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
-  const ctx = document.getElementById('ctx-input').value.trim();
-  const verbosity = localStorage.getItem('verbosity') || 'short';
-
-  document.getElementById('responses-area').innerHTML = `<div class="loader"><div class="spinner"></div>generating…</div>`;
-  document.getElementById('gen-btn').disabled = true;
-
-  const langCode = localStorage.getItem('voice_lang') || 'en';
-  const langNames = { en:'English', fr:'French', de:'German', es:'Spanish', it:'Italian', pt:'Portuguese', nl:'Dutch', ja:'Japanese', ko:'Korean', zh:'Chinese' };
-  const langName = langNames[langCode] || langCode;
-  const langInstruction = `Language: Respond in ${langName}. You may naturally incorporate words or short phrases borrowed from other languages where they appear in the chat and suit the streamer's voice.`;
-
-  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only. [emote] in chat marks a Twitch visual emote — do not say it aloud.
-
-${langInstruction}
-
-Length rule: ${VLENGTH[verbosity]}
-
-Generate exactly 4 options varying in tone: one warm/engaged, one witty/playful, one direct, one bonus of whatever tone fits best.
-Reply ONLY with valid JSON, no other text: {"responses":["...","...","...","..."]}
-
-Recent chat:
-${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}`;
-
-  try {
-    const r = await fetch(`${PROXY_URL}/v1/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const d = await r.json();
-    if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error));
-
-    const raw = d.content?.[0]?.text ?? '';
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found in response');
-    renderCards(JSON.parse(jsonMatch[0]).responses);
-  } catch(e) {
-    document.getElementById('responses-area').innerHTML = `<div class="loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
-  } finally {
-    document.getElementById('gen-btn').disabled = false;
-  }
-}
-
-// ── RENDER COMPACT ──
-function renderCards(responses) {
-  const area = document.getElementById('responses-area');
-  area.innerHTML = '';
-  responses.forEach((text, i) => {
-    const card = document.createElement('div');
-    card.className = 'response-card';
-    card.innerHTML = `<div class="rnum">${i+1}</div><div class="rtext">${x(text)}</div>
-      <div class="card-btns"><button class="btn-speak">🔊</button><button class="btn-stop">■</button></div>`;
-    card.querySelector('.btn-speak').onclick = () => speak(text, card);
-    card.querySelector('.btn-stop').onclick = () => stopSpeak();
-    area.appendChild(card);
-  });
-}
-
-// ── SPEECH ──
-function speak(text, card) {
-  stopSpeak();
-  speakingCard = card;
-  card.classList.add('speaking');
-
-  const voiceId = localStorage.getItem('el_voice_id') || '';
-  const elKey = localStorage.getItem('el_key') || '';
-
-  if (elKey && voiceId) {
-    speakElevenLabs(text, elKey, voiceId, card, msg => setVoiceStatus('error: ' + msg, 'err'));
-  } else {
-    speakBrowser(text, card);
-  }
-}
 </script>
 </body>
 </html>

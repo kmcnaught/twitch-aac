@@ -132,9 +132,9 @@
   #setup-inner select option { background: var(--surface); }
 
   /* CHAT */
-  #chat-panel { max-height: 203px; border-bottom: 1px solid var(--border); }
+  #chat-panel { max-height: 203px; min-height: 0; flex-shrink: 1; border-bottom: 1px solid var(--border); }
   #chat-area {
-    height: 203px; overflow-y: auto; padding: 9px 19px;
+    max-height: 203px; overflow-y: auto; padding: 9px 19px;
     display: flex; flex-direction: column; gap: 3px; background: var(--chat-bg);
   }
   .chat-msg { font-size: 18px; line-height: 1.6; padding: 4px 0; border-bottom: 1px solid var(--chat-msg-border); animation: fadeIn 0.2s; }
