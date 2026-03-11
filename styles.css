@@ -82,9 +82,6 @@
   }
   .hbtn:hover { border-color: var(--accent); color: var(--accent); }
 
-  .collapsible { overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s ease; flex-shrink: 0; }
-  .collapsible.closed { max-height: 0 !important; opacity: 0; pointer-events: none; }
-
   /* SETUP */
   #setup-panel { max-height: 460px; border-bottom: 1px solid var(--border); }
   #setup-inner { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
@@ -117,13 +114,6 @@
   .key-hint a { color: var(--accent); text-decoration: none; }
   .key-hint a:hover { text-decoration: underline; }
 
-  /* VERBOSITY */
-  #verbosity-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 19px; border-bottom: 1px solid var(--border);
-    flex-shrink: 0; background: var(--surface);
-  }
-
   .pill {
     background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 18px; padding: 8px 16px; border-radius: 27px; cursor: pointer;
@@ -131,6 +121,15 @@
   }
   .pill.active { background: var(--accent); border-color: var(--accent); color: white; }
   .pill:active { transform: scale(0.94); }
+
+  #setup-inner select {
+    background: var(--surface); border: 1px solid var(--border-ui); border-radius: 11px;
+    padding: 14px 18px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 19px; flex: 1; outline: none; cursor: pointer; min-width: 0;
+    transition: border-color 0.2s; appearance: none;
+  }
+  #setup-inner select:focus { border-color: var(--accent); }
+  #setup-inner select option { background: var(--surface); }
 
   /* CHAT */
   #chat-panel { max-height: 203px; border-bottom: 1px solid var(--border); }
@@ -222,11 +221,18 @@
   .fs-verbosity { display: flex; gap: 8px; align-items: center; }
 
   #fs-suggest-btn {
-    background: linear-gradient(135deg, var(--accent), #9b6aff);
-    color: white; padding: 12px 27px; font-size: 18px; margin-left: auto;
+    margin: 8px 10px 10px;
+    width: calc(100% - 20px);
+    flex-shrink: 0;
   }
-  #fs-suggest-btn:disabled { opacity: 0.35; cursor: default; }
-  #fs-suggest-btn:not(:disabled):active { transform: scale(0.96); }
+
+  .btn-back {
+    background: none; border: 1px solid var(--border-ui); color: var(--muted);
+    cursor: pointer; padding: 6px 12px; font-family: 'Syne', sans-serif;
+    font-size: 13px; border-radius: 8px; transition: border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-back:hover { border-color: var(--accent); color: var(--text); }
 
   .btn-exit-fs {
     background: none; border: 1px solid var(--border-ui); color: var(--muted);

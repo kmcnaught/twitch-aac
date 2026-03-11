@@ -8,21 +8,18 @@
 </head>
 <body>
 
-<!-- ═══════════════ COMPACT VIEW ═══════════════ -->
+<!-- ═══════════════ SETUP PAGE ═══════════════ -->
 <div id="compact-view">
 
   <header>
     <div class="logo">StreamAAC</div>
     <div class="status-dot" id="status-dot"></div>
     <div class="status-label" id="status-label">not connected</div>
-    <button class="hbtn" id="setup-btn" onclick="toggleSetup()" aria-expanded="true" aria-controls="setup-panel">setup ▲</button>
     <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
-    <button class="hbtn" id="chat-btn" onclick="toggleChat()" aria-expanded="true" aria-controls="chat-panel">chat ▲</button>
     <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
-    <button class="hbtn" onclick="enterFS()" aria-label="Enter fullscreen">⛶</button>
   </header>
 
-  <div class="collapsible" id="setup-panel" style="max-height:340px">
+  <div id="setup-panel">
     <div id="setup-inner">
       <div class="row">
         <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
@@ -39,6 +36,22 @@
       <div class="row">
         <label for="ctx-input">context</label>
         <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
+      </div>
+      <div class="row">
+        <label for="game-select">game</label>
+        <select id="game-select">
+          <option value="">— not specified —</option>
+          <option value="Just Chatting">Just Chatting</option>
+          <option value="League of Legends">League of Legends</option>
+          <option value="Fortnite">Fortnite</option>
+          <option value="Minecraft">Minecraft</option>
+          <option value="Grand Theft Auto V">Grand Theft Auto V</option>
+          <option value="Valorant">Valorant</option>
+          <option value="Apex Legends">Apex Legends</option>
+          <option value="other">Other…</option>
+        </select>
+        <input type="text" id="game-custom-input" placeholder="game name"
+               style="display:none" autocorrect="off" spellcheck="false"/>
       </div>
     </div>
   </div>
@@ -114,14 +127,7 @@
     </div>
   </div>
 
-  <div id="verbosity-bar">
-    <label>length</label>
-    <button class="pill active" data-v="short" onclick="setV(this)">short</button>
-    <button class="pill" data-v="medium" onclick="setV(this)">1 sentence</button>
-    <button class="pill" data-v="long" onclick="setV(this)">longer</button>
-  </div>
-
-  <div class="collapsible" id="chat-panel" style="max-height:150px">
+  <div id="chat-panel">
     <div id="chat-area">
       <div class="empty-state" id="empty-msg">connect to see chat</div>
     </div>
@@ -136,67 +142,19 @@
 
 </div>
 
-<!-- ═══════════════ FULLSCREEN VIEW ═══════════════ -->
-<div id="fs-view">
-
-  <div id="fs-topbar">
-    <div id="fs-status-dot"></div>
-    <div id="fs-status-label">not connected</div>
-    <div class="fs-verbosity" style="margin-left:12px">
-      <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
-      <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
-      <button class="pill" data-fv="medium" onclick="setFV(this)">1 sentence</button>
-      <button class="pill" data-fv="long" onclick="setFV(this)">longer</button>
-    </div>
-    <div class="fs-font-size-ctrl">
-      <button id="fs-font-down" title="Decrease font size">A<sup>−</sup></button>
-      <button id="fs-font-up" title="Increase font size">A<sup>+</sup></button>
-    </div>
-    <button id="fs-suggest-btn" class="btn-gen" onclick="gen(true)" disabled>suggest</button>
-    <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
-    <button class="btn-exit-fs" onclick="exitFS()">✕ exit</button>
-  </div>
-
-  <div id="fs-body">
-    <div id="fs-responses">
-      <div id="fs-empty-state">
-        <button id="fs-suggest-prominent" onclick="gen(true)" disabled>suggest</button>
-        <div class="fs-empty-hint">hit suggest to generate responses</div>
-      </div>
-    </div>
-    <div id="fs-chat-panel">
-      <div id="fs-chat-header">
-        <span>chat · tap to select</span>
-        <button class="btn-close-chat" onclick="closeFsChat()" aria-label="Close chat panel">‹</button>
-      </div>
-      <div id="fs-chat-area">
-        <div class="empty-state" style="padding:20px 6px">connect to see chat</div>
-      </div>
-      <button id="fs-new-msgs-btn" onclick="acceptNewMessages()">↓ <span id="fs-new-msgs-count"></span> new messages</button>
-    </div>
-    <button id="fs-open-chat" onclick="openFsChat()" aria-label="Open chat panel">chat ›</button>
-  </div>
-
-</div>
-
 <script>
 // ── CONFIG ──
 const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
 
 // ── STATE ──
 let ws = null, messages = [], isConnected = false, speakingCard = null;
-let verbosity = 'short';
-let selectedMsg = null;     // { user, text } — fullscreen selected chat message
-let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '17');
 let theme = localStorage.getItem('theme') || 'dark';
-let pendingFsGen = false;   // set true when startGenerating() triggers an auto-connect
-let bufferedFsMsgs = [];    // fs-chat messages held while a selection is active
 const MAX_MSG = 40;
 
 // ── ELEVENLABS STATE ──
-let elVoices = [];          // all voices fetched from ElevenLabs
-let elGenderFilter = 'all'; // 'all' | 'female' | 'male'
-let elAudio = null;         // current HTMLAudioElement for EL playback
+let elVoices = [];
+let elGenderFilter = 'all';
+let elAudio = null;
 
 const VLENGTH = {
   short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',
@@ -210,41 +168,53 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
   document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
-  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
 }
 
 // ── LOCALSTORAGE: load saved values on startup ──
 window.addEventListener('DOMContentLoaded', () => {
-  // Theme
   document.documentElement.setAttribute('data-theme', theme);
   document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
-  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
 
   const savedChannel = localStorage.getItem('twitch_channel');
-  const savedHandle = localStorage.getItem('twitch_handle');
+  const savedHandle  = localStorage.getItem('twitch_handle');
   const savedPersona = localStorage.getItem('persona');
-  const savedCtx = localStorage.getItem('context');
+  const savedCtx     = localStorage.getItem('context');
 
   if (savedChannel) document.getElementById('channel-input').value = savedChannel;
-  if (savedHandle) document.getElementById('handle-input').value = savedHandle;
+  if (savedHandle)  document.getElementById('handle-input').value  = savedHandle;
   if (savedPersona) document.getElementById('persona-input').value = savedPersona;
-  if (savedCtx) document.getElementById('ctx-input').value = savedCtx;
+  if (savedCtx)     document.getElementById('ctx-input').value     = savedCtx;
 
   // Save on change
   document.getElementById('channel-input').addEventListener('change', () =>
     localStorage.setItem('twitch_channel', document.getElementById('channel-input').value.trim()));
-  document.getElementById('persona-input').addEventListener('change', () =>
-    localStorage.setItem('persona', document.getElementById('persona-input').value.trim()));
   document.getElementById('handle-input').addEventListener('change', () =>
     localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim()));
+  document.getElementById('persona-input').addEventListener('change', () =>
+    localStorage.setItem('persona', document.getElementById('persona-input').value.trim()));
   document.getElementById('ctx-input').addEventListener('change', () =>
     localStorage.setItem('context', document.getElementById('ctx-input').value.trim()));
 
+  // Game select
+  const savedGame = localStorage.getItem('game') || '';
+  if (savedGame) document.getElementById('game-select').value = savedGame;
+  if (savedGame === 'other') {
+    document.getElementById('game-custom-input').style.display = '';
+    const savedCustom = localStorage.getItem('game_custom') || '';
+    if (savedCustom) document.getElementById('game-custom-input').value = savedCustom;
+  }
+  document.getElementById('game-select').addEventListener('change', () => {
+    const val = document.getElementById('game-select').value;
+    localStorage.setItem('game', val);
+    document.getElementById('game-custom-input').style.display = val === 'other' ? '' : 'none';
+  });
+  document.getElementById('game-custom-input').addEventListener('change', () => {
+    localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
+  });
+
   // Load saved ElevenLabs key
   const savedElKey = localStorage.getItem('el_key');
-  if (savedElKey) {
-    document.getElementById('el-key-input').value = savedElKey;
-  }
+  if (savedElKey) document.getElementById('el-key-input').value = savedElKey;
   document.getElementById('el-key-input').addEventListener('input', () => {
     localStorage.setItem('el_key', document.getElementById('el-key-input').value.trim());
   });
@@ -285,22 +255,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
 });
 
-// ── COLLAPSE ──
-function toggleSetup() {
-  const el = document.getElementById('setup-panel');
-  const btn = document.getElementById('setup-btn');
-  const closed = el.classList.toggle('closed');
-  btn.textContent = closed ? 'setup ▼' : 'setup ▲';
-  btn.setAttribute('aria-expanded', !closed);
-}
-function toggleChat() {
-  const el = document.getElementById('chat-panel');
-  const btn = document.getElementById('chat-btn');
-  const closed = el.classList.toggle('closed');
-  btn.textContent = closed ? 'chat ▼' : 'chat ▲';
-  btn.setAttribute('aria-expanded', !closed);
-}
-
+// ── VOICE MODAL ──
 function openVoiceModal() {
   document.getElementById('voice-modal').classList.add('open');
 }
@@ -363,9 +318,9 @@ function filterVoices(btn) {
 }
 
 function renderElVoices(selectedId) {
-  const genderRow = document.getElementById('gender-row');
-  const selectRow = document.getElementById('voice-select-row');
-  const sel = document.getElementById('voice-select');
+  const genderRow  = document.getElementById('gender-row');
+  const selectRow  = document.getElementById('voice-select-row');
+  const sel        = document.getElementById('voice-select');
   if (!elVoices.length) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
 
   genderRow.style.display = 'flex';
@@ -418,86 +373,31 @@ function saveBrowserVoice() {
   localStorage.setItem('browser_voice', document.getElementById('browser-voice-select').value);
 }
 
-// ── FULLSCREEN ──
-function applyFsFontSize() {
-  document.getElementById('fs-view').style.setProperty('--fs-font-size', fsFontSize + 'px');
-}
-
-document.getElementById('fs-font-down').onclick = () => {
-  if (fsFontSize > 10) { fsFontSize = Math.max(10, fsFontSize - 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
-};
-document.getElementById('fs-font-up').onclick = () => {
-  if (fsFontSize < 28) { fsFontSize = Math.min(28, fsFontSize + 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
-};
-
-applyFsFontSize();
-
-function enterFS() { document.getElementById('fs-view').classList.add('active'); }
-function exitFS()  { document.getElementById('fs-view').classList.remove('active'); }
-function closeFsChat() {
-  document.getElementById('fs-chat-panel').classList.add('closed');
-  document.getElementById('fs-open-chat').classList.add('visible');
-}
-function openFsChat() {
-  document.getElementById('fs-chat-panel').classList.remove('closed');
-  document.getElementById('fs-open-chat').classList.remove('visible');
-}
-
-// ── START GENERATING (main page button) ──
+// ── START GENERATING → navigate to chat page ──
 function startGenerating() {
-  if (isConnected) {
-    enterFS();
-    if (messages.length) gen(true);
-    return;
-  }
-  // Not connected — try to connect first
   const ch = document.getElementById('channel-input').value.trim();
-  if (!ch) {
-    // No channel set — open setup panel and focus the input
-    if (sp.classList.contains('closed')) toggleSetup();
-    document.getElementById('channel-input').focus();
-    return;
-  }
-  pendingFsGen = true;
-  connect();
-}
-
-// ── VERBOSITY ──
-function setV(btn) {
-  document.querySelectorAll('.pill[data-v]').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  verbosity = btn.dataset.v;
-  document.querySelectorAll('.pill[data-fv]').forEach(p =>
-    p.classList.toggle('active', p.dataset.fv === verbosity));
-}
-function setFV(btn) {
-  document.querySelectorAll('.pill[data-fv]').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  verbosity = btn.dataset.fv;
-  document.querySelectorAll('.pill[data-v]').forEach(p =>
-    p.classList.toggle('active', p.dataset.v === verbosity));
+  if (!ch) { document.getElementById('channel-input').focus(); return; }
+  // Flush all fields to localStorage before navigating
+  localStorage.setItem('twitch_channel', ch);
+  localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim());
+  localStorage.setItem('persona', document.getElementById('persona-input').value.trim());
+  localStorage.setItem('context', document.getElementById('ctx-input').value.trim());
+  const gameVal = document.getElementById('game-select').value;
+  localStorage.setItem('game', gameVal);
+  localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
+  window.location.href = 'chat.html';
 }
 
 // ── STATUS ──
 function setStatus(cls, txt) {
   document.getElementById('status-dot').className = 'status-dot ' + cls;
   document.getElementById('status-label').textContent = txt;
-  document.getElementById('fs-status-dot').className = 'status-dot ' + cls;
-  document.getElementById('fs-status-label').textContent = txt;
-}
-
-// ── FS SUGGEST BUTTONS: enable/disable both at once ──
-function setFsSuggestEnabled(enabled) {
-  document.getElementById('fs-suggest-btn').disabled = !enabled;
-  const prominent = document.getElementById('fs-suggest-prominent');
-  if (prominent) prominent.disabled = !enabled;
 }
 
 // ── CONNECT ──
 function toggleConnect() { isConnected ? disconnect() : connect(); }
 
 function connect() {
-  // Accept full URL (https://twitch.tv/name or twitch.tv/name) or bare handle
   let ch = document.getElementById('channel-input').value.trim().toLowerCase();
   ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   if (!ch) return;
@@ -522,28 +422,18 @@ function connect() {
       isConnected = true;
       setStatus('connected', '#' + ch);
       btn.textContent = 'leave'; btn.className = 'btn-connect off';
-      setFsSuggestEnabled(true);
       clearEmptyMsg();
-      // If triggered by startGenerating(), enter FS and run suggest
-      if (pendingFsGen) {
-        pendingFsGen = false;
-        enterFS();
-        if (messages.length) gen(true);
-      }
     }
     const m = raw.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
     if (m) addMsg(m[1], m[2]);
   };
   ws.onerror = () => {
     setStatus('error', 'error'); btn.textContent = 'retry'; btn.className = 'btn-connect'; isConnected = false;
-    pendingFsGen = false;
   };
   ws.onclose = () => {
     if (!isConnected) return;
     setStatus('error', 'disconnected'); isConnected = false;
     btn.textContent = 'connect'; btn.className = 'btn-connect';
-    setFsSuggestEnabled(false);
-    pendingFsGen = false;
   };
 }
 
@@ -552,87 +442,30 @@ function disconnect() {
   isConnected = false; setStatus('', 'not connected');
   const btn = document.getElementById('connect-btn');
   btn.textContent = 'connect'; btn.className = 'btn-connect';
-  setFsSuggestEnabled(false);
 }
 
 // ── CHAT ──
 function clearEmptyMsg() {
   const e = document.getElementById('empty-msg'); if (e) e.remove();
-  const fe = document.querySelector('#fs-chat-area .empty-state'); if (fe) fe.remove();
 }
 
 function addMsg(user, text) {
-  const msgObj = { user, text };
-  messages.push(msgObj);
+  messages.push({ user, text });
   if (messages.length > MAX_MSG) messages.shift();
 
   const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
   const col = cols[user.charCodeAt(0) % cols.length];
 
-  // Compact chat (read-only)
-  const compactHtml = `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`;
   const ca = document.getElementById('chat-area');
-  ca.insertAdjacentHTML('beforeend', compactHtml); ca.scrollTop = ca.scrollHeight;
-
-  // Fullscreen chat (selectable)
-  const fsEl = document.createElement('div');
-  fsEl.className = 'fs-chat-msg';
-  fsEl.innerHTML = `<span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span>`;
-  fsEl.addEventListener('click', () => {
-    if (selectedMsg === msgObj) {
-      // Toggle off — flush buffer
-      clearSelection();
-      flushBufferedFsMsgs();
-    } else {
-      // Deselect previous, select this one
-      clearSelection();
-      selectedMsg = msgObj;
-      fsEl.classList.add('selected');
-      const lbl = document.createElement('span');
-      lbl.className = 'fs-selected-label';
-      lbl.textContent = '▶ responding to';
-      fsEl.prepend(lbl);
-    }
-  });
-
-  if (selectedMsg) {
-    // Buffer this message while a selection is active
-    bufferedFsMsgs.push(fsEl);
-    const btn = document.getElementById('fs-new-msgs-btn');
-    btn.style.display = 'block';
-    document.getElementById('fs-new-msgs-count').textContent = bufferedFsMsgs.length;
-  } else {
-    const fca = document.getElementById('fs-chat-area');
-    fca.appendChild(fsEl); fca.scrollTop = fca.scrollHeight;
-  }
-}
-
-function clearSelection() {
-  selectedMsg = null;
-  document.querySelectorAll('.fs-chat-msg.selected').forEach(el => {
-    el.classList.remove('selected');
-    const lbl = el.querySelector('.fs-selected-label');
-    if (lbl) lbl.remove();
-  });
-}
-
-function flushBufferedFsMsgs() {
-  const fca = document.getElementById('fs-chat-area');
-  bufferedFsMsgs.forEach(el => fca.appendChild(el));
-  bufferedFsMsgs = [];
-  fca.scrollTop = fca.scrollHeight;
-  document.getElementById('fs-new-msgs-btn').style.display = 'none';
-}
-
-function acceptNewMessages() {
-  clearSelection();
-  flushBufferedFsMsgs();
+  ca.insertAdjacentHTML('beforeend',
+    `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`);
+  ca.scrollTop = ca.scrollHeight;
 }
 
 function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ── GENERATE (Anthropic via proxy) ──
-async function gen(isFs=false) {
+// ── GENERATE (compact view) ──
+async function gen() {
   const chat = messages.slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
   if (!chat) { alert('No chat messages yet'); return; }
 
@@ -640,20 +473,10 @@ async function gen(isFs=false) {
   let handle = document.getElementById('handle-input').value.trim().toLowerCase();
   handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   const ctx = document.getElementById('ctx-input').value.trim();
+  const verbosity = localStorage.getItem('verbosity') || 'short';
 
-  // Build selected-message focus context (fullscreen only)
-  const selectedContext = (isFs && selectedMsg)
-    ? `\n\nThe streamer has selected this specific message to respond to — prioritize crafting responses that directly address it: "${selectedMsg.user}: ${selectedMsg.text}"`
-    : '';
-
-  const loader = `<div class="${isFs?'fs-loader':'loader'}"><div class="spinner"></div>generating…</div>`;
-  if (isFs) {
-    document.getElementById('fs-responses').innerHTML = loader;
-    setFsSuggestEnabled(false);
-  } else {
-    document.getElementById('responses-area').innerHTML = loader;
-    document.getElementById('gen-btn').disabled = true;
-  }
+  document.getElementById('responses-area').innerHTML = `<div class="loader"><div class="spinner"></div>generating…</div>`;
+  document.getElementById('gen-btn').disabled = true;
 
   const langCode = localStorage.getItem('voice_lang') || 'en';
   const langNames = { en:'English', fr:'French', de:'German', es:'Spanish', it:'Italian', pt:'Portuguese', nl:'Dutch', ja:'Japanese', ko:'Korean', zh:'Chinese' };
@@ -670,7 +493,7 @@ Generate exactly 4 options varying in tone: one warm/engaged, one witty/playful,
 Reply ONLY with valid JSON, no other text: {"responses":["...","...","...","..."]}
 
 Recent chat:
-${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}${selectedContext}`;
+${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}`;
 
   try {
     const r = await fetch(`${PROXY_URL}/v1/messages`, {
@@ -689,17 +512,11 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
     const raw = d.content?.[0]?.text ?? '';
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    if (isFs) renderFsCards(parsed.responses);
-    else renderCards(parsed.responses);
+    renderCards(JSON.parse(jsonMatch[0]).responses);
   } catch(e) {
-    const errHtml = `<div class="${isFs?'fs-loader':'loader'}" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
-    if (isFs) document.getElementById('fs-responses').innerHTML = errHtml;
-    else document.getElementById('responses-area').innerHTML = errHtml;
+    document.getElementById('responses-area').innerHTML = `<div class="loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
   } finally {
-    if (isFs) setFsSuggestEnabled(true);
-    else document.getElementById('gen-btn').disabled = false;
+    document.getElementById('gen-btn').disabled = false;
   }
 }
 
@@ -718,26 +535,9 @@ function renderCards(responses) {
   });
 }
 
-// ── RENDER FULLSCREEN ──
-function renderFsCards(responses) {
-  const area = document.getElementById('fs-responses');
-  area.innerHTML = '';
-  responses.forEach((text, i) => {
-    const card = document.createElement('div');
-    card.className = 'fs-card';
-    card.innerHTML = `<div class="fs-rnum">${i+1}</div><div class="fs-rtext">${x(text)}</div>
-      <div class="fs-card-btns"><button class="fs-speak">🔊</button><button class="fs-stop">■</button></div>`;
-    card.querySelector('.fs-speak').onclick = () => speak(text, card);
-    card.querySelector('.fs-stop').onclick = () => stopSpeak();
-    area.appendChild(card);
-  });
-}
-
 // ── SPEECH ──
 function speak(text, card) {
   stopSpeak();
-  clearSelection();
-  flushBufferedFsMsgs();
   speakingCard = card;
   card.classList.add('speaking');
 
@@ -799,8 +599,6 @@ function clearSpeak(card) {
   card.classList.remove('speaking');
   speakingCard = null;
 }
-
-window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
 </script>
 </body>
 </html>

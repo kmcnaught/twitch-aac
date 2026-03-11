@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>StreamAAC · Chat</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="fs-view" class="active">
+
+  <div id="fs-topbar">
+    <button class="btn-back" onclick="goBack()">← back</button>
+    <div id="fs-status-dot"></div>
+    <div id="fs-status-label">connecting…</div>
+    <div class="fs-verbosity" style="margin-left:12px">
+      <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
+      <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
+      <button class="pill" data-fv="medium" onclick="setFV(this)">1 sentence</button>
+      <button class="pill" data-fv="long" onclick="setFV(this)">longer</button>
+    </div>
+    <div class="fs-font-size-ctrl">
+      <button id="fs-font-down" title="Decrease font size">A<sup>−</sup></button>
+      <button id="fs-font-up" title="Increase font size">A<sup>+</sup></button>
+    </div>
+    <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
+  </div>
+
+  <div id="fs-body">
+    <div id="fs-responses">
+      <div id="fs-empty-state">
+        <button id="fs-suggest-prominent" onclick="gen()" disabled>suggest</button>
+        <div class="fs-empty-hint">hit suggest to generate responses</div>
+      </div>
+    </div>
+    <div id="fs-chat-panel">
+      <div id="fs-chat-header">
+        <span>chat · tap to select</span>
+        <button class="btn-close-chat" onclick="closeFsChat()" aria-label="Close chat panel">‹</button>
+      </div>
+      <div id="fs-chat-area">
+        <div class="empty-state" style="padding:20px 6px">connecting…</div>
+      </div>
+      <button id="fs-new-msgs-btn" onclick="acceptNewMessages()">
+        ↓ <span id="fs-new-msgs-count"></span> new messages
+      </button>
+      <button id="fs-suggest-btn" class="btn-gen" onclick="gen()" disabled>suggest</button>
+    </div>
+    <button id="fs-open-chat" onclick="openFsChat()" aria-label="Open chat panel">chat ›</button>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──
+const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
+
+// ── STATE ──
+let ws = null, messages = [], isConnected = false, speakingCard = null;
+let verbosity = 'short';
+let selectedMsg = null;
+let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '17');
+let theme = localStorage.getItem('theme') || 'dark';
+let bufferedFsMsgs = [];
+let elAudio = null;
+const MAX_MSG = 40;
+
+const VLENGTH = {
+  short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',
+  medium: 'All responses are approximately one sentence, 10–20 words each. The bonus option can be shorter or longer as feels right.',
+  long:   'All responses are 2–3 sentences, expansive and conversational. The bonus option can vary in length as appropriate.'
+};
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  applyTheme();
+  applyFsFontSize();
+
+  // Restore verbosity
+  const savedV = localStorage.getItem('verbosity') || 'short';
+  verbosity = savedV;
+  document.querySelectorAll('.pill[data-fv]').forEach(p =>
+    p.classList.toggle('active', p.dataset.fv === savedV));
+
+  // Font size buttons
+  document.getElementById('fs-font-down').onclick = () => {
+    if (fsFontSize > 10) { fsFontSize = Math.max(10, fsFontSize - 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
+  };
+  document.getElementById('fs-font-up').onclick = () => {
+    if (fsFontSize < 28) { fsFontSize = Math.min(28, fsFontSize + 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
+  };
+
+  // Auto-connect
+  const ch = localStorage.getItem('twitch_channel');
+  if (ch) connect(ch);
+});
+
+// ── THEME ──
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+}
+
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  document.getElementById('fs-theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+}
+
+// ── FONT SIZE ──
+function applyFsFontSize() {
+  document.getElementById('fs-view').style.setProperty('--fs-font-size', fsFontSize + 'px');
+}
+
+// ── VERBOSITY ──
+function setFV(btn) {
+  document.querySelectorAll('.pill[data-fv]').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  verbosity = btn.dataset.fv;
+  localStorage.setItem('verbosity', verbosity);
+}
+
+// ── NAVIGATION ──
+function goBack() {
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  window.location.href = 'index.html';
+}
+
+// ── STATUS ──
+function setStatus(cls, txt) {
+  document.getElementById('fs-status-dot').className = 'status-dot ' + cls;
+  document.getElementById('fs-status-label').textContent = txt;
+}
+
+// ── SUGGEST BUTTONS ──
+function setFsSuggestEnabled(enabled) {
+  document.getElementById('fs-suggest-btn').disabled = !enabled;
+  const prominent = document.getElementById('fs-suggest-prominent');
+  if (prominent) prominent.disabled = !enabled;
+}
+
+// ── CONNECT ──
+function connect(rawCh) {
+  let ch = rawCh.trim().toLowerCase();
+  ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
+  if (!ch) return;
+
+  setStatus('connecting', 'connecting…');
+
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+
+  const sock = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  ws = sock;
+  ws.onopen = () => {
+    if (ws !== sock) return;
+    sock.send('PASS oauth:justinfan12345');
+    sock.send('NICK justinfan12345');
+    sock.send('JOIN #' + ch);
+  };
+  ws.onmessage = (e) => {
+    const raw = e.data.trim();
+    if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
+    if (raw.includes('366')) {
+      isConnected = true;
+      setStatus('connected', '#' + ch);
+      setFsSuggestEnabled(true);
+      clearEmptyMsg();
+    }
+    const m = raw.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
+    if (m) addMsg(m[1], m[2]);
+  };
+  ws.onerror = () => {
+    setStatus('error', 'connection error');
+    isConnected = false;
+  };
+  ws.onclose = () => {
+    if (!isConnected) return;
+    setStatus('error', 'disconnected');
+    isConnected = false;
+    setFsSuggestEnabled(false);
+  };
+}
+
+// ── CHAT ──
+function clearEmptyMsg() {
+  const fe = document.querySelector('#fs-chat-area .empty-state');
+  if (fe) fe.remove();
+}
+
+function addMsg(user, text) {
+  const msgObj = { user, text };
+  messages.push(msgObj);
+  if (messages.length > MAX_MSG) messages.shift();
+
+  const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
+  const col = cols[user.charCodeAt(0) % cols.length];
+
+  const fsEl = document.createElement('div');
+  fsEl.className = 'fs-chat-msg';
+  fsEl.innerHTML = `<span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span>`;
+  fsEl.addEventListener('click', () => {
+    if (selectedMsg === msgObj) {
+      clearSelection();
+      flushBufferedFsMsgs();
+    } else {
+      clearSelection();
+      selectedMsg = msgObj;
+      fsEl.classList.add('selected');
+      const lbl = document.createElement('span');
+      lbl.className = 'fs-selected-label';
+      lbl.textContent = '▶ responding to';
+      fsEl.prepend(lbl);
+    }
+  });
+
+  if (selectedMsg) {
+    bufferedFsMsgs.push(fsEl);
+    const btn = document.getElementById('fs-new-msgs-btn');
+    btn.style.display = 'block';
+    document.getElementById('fs-new-msgs-count').textContent = bufferedFsMsgs.length;
+  } else {
+    const fca = document.getElementById('fs-chat-area');
+    fca.appendChild(fsEl);
+    fca.scrollTop = fca.scrollHeight;
+  }
+}
+
+function clearSelection() {
+  selectedMsg = null;
+  document.querySelectorAll('.fs-chat-msg.selected').forEach(el => {
+    el.classList.remove('selected');
+    const lbl = el.querySelector('.fs-selected-label');
+    if (lbl) lbl.remove();
+  });
+}
+
+function flushBufferedFsMsgs() {
+  const fca = document.getElementById('fs-chat-area');
+  bufferedFsMsgs.forEach(el => fca.appendChild(el));
+  bufferedFsMsgs = [];
+  fca.scrollTop = fca.scrollHeight;
+  document.getElementById('fs-new-msgs-btn').style.display = 'none';
+}
+
+function acceptNewMessages() {
+  clearSelection();
+  flushBufferedFsMsgs();
+}
+
+function closeFsChat() {
+  document.getElementById('fs-chat-panel').classList.add('closed');
+  document.getElementById('fs-open-chat').classList.add('visible');
+}
+function openFsChat() {
+  document.getElementById('fs-chat-panel').classList.remove('closed');
+  document.getElementById('fs-open-chat').classList.remove('visible');
+}
+
+function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── GENERATE ──
+async function gen() {
+  const chat = messages.slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
+  if (!chat) { alert('No chat messages yet'); return; }
+
+  const persona    = localStorage.getItem('persona') || 'a streamer';
+  let handle       = (localStorage.getItem('twitch_handle') || '').trim().toLowerCase();
+  handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
+  const ctx        = localStorage.getItem('context') || '';
+  const game       = localStorage.getItem('game') || '';
+  const gameCustom = localStorage.getItem('game_custom') || '';
+  const gameStr    = game === 'other' ? gameCustom : game;
+
+  const selectedContext = selectedMsg
+    ? `\n\nThe streamer has selected this specific message to respond to — prioritize crafting responses that directly address it: "${selectedMsg.user}: ${selectedMsg.text}"`
+    : '';
+
+  document.getElementById('fs-responses').innerHTML =
+    `<div class="fs-loader"><div class="spinner"></div>generating…</div>`;
+  setFsSuggestEnabled(false);
+
+  const langCode = localStorage.getItem('voice_lang') || 'en';
+  const langNames = { en:'English', fr:'French', de:'German', es:'Spanish', it:'Italian', pt:'Portuguese', nl:'Dutch', ja:'Japanese', ko:'Korean', zh:'Chinese' };
+  const langName = langNames[langCode] || langCode;
+  const langInstruction = `Language: Respond in ${langName}. You may naturally incorporate words or short phrases borrowed from other languages where they appear in the chat and suit the streamer's voice.`;
+
+  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
+
+${langInstruction}
+
+Length rule: ${VLENGTH[verbosity]}
+
+Generate exactly 4 options varying in tone: one warm/engaged, one witty/playful, one direct, one bonus of whatever tone fits best.
+Reply ONLY with valid JSON, no other text: {"responses":["...","...","...","..."]}
+
+Recent chat:
+${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}${gameStr ? '\nGame: The streamer is playing '+gameStr+'.' : ''}${selectedContext}`;
+
+  try {
+    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error));
+
+    const raw = d.content?.[0]?.text ?? '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+    renderFsCards(JSON.parse(jsonMatch[0]).responses);
+  } catch(e) {
+    document.getElementById('fs-responses').innerHTML =
+      `<div class="fs-loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
+  } finally {
+    setFsSuggestEnabled(true);
+  }
+}
+
+// ── RENDER ──
+function renderFsCards(responses) {
+  const area = document.getElementById('fs-responses');
+  area.innerHTML = '';
+  responses.forEach((text, i) => {
+    const card = document.createElement('div');
+    card.className = 'fs-card';
+    card.innerHTML = `<div class="fs-rnum">${i+1}</div><div class="fs-rtext">${x(text)}</div>
+      <div class="fs-card-btns"><button class="fs-speak">🔊</button><button class="fs-stop">■</button></div>`;
+    card.querySelector('.fs-speak').onclick = () => speak(text, card);
+    card.querySelector('.fs-stop').onclick  = () => stopSpeak();
+    area.appendChild(card);
+  });
+}
+
+// ── SPEECH ──
+function speak(text, card) {
+  stopSpeak();
+  clearSelection();
+  flushBufferedFsMsgs();
+  speakingCard = card;
+  card.classList.add('speaking');
+
+  const voiceId = localStorage.getItem('el_voice_id') || '';
+  const elKey   = localStorage.getItem('el_key') || '';
+
+  if (elKey && voiceId) {
+    speakElevenLabs(text, elKey, voiceId, card);
+  } else {
+    speakBrowser(text, card);
+  }
+}
+
+function speakBrowser(text, card) {
+  const u = new SpeechSynthesisUtterance(text);
+  const savedVoiceName = localStorage.getItem('browser_voice') || '';
+  const lang = localStorage.getItem('voice_lang') || 'en';
+  const allVoices = window.speechSynthesis.getVoices();
+  const chosen = savedVoiceName
+    ? allVoices.find(v => v.name === savedVoiceName)
+    : allVoices.find(v => v.lang.startsWith(lang));
+  if (chosen) u.voice = chosen;
+  u.rate = 0.95;
+  u.onend = u.onerror = () => clearSpeak(card);
+  window.speechSynthesis.speak(u);
+}
+
+async function speakElevenLabs(text, key, voiceId, card) {
+  if (elAudio) { elAudio.pause(); elAudio = null; }
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    elAudio = new Audio(url);
+    elAudio.onended = elAudio.onerror = () => { URL.revokeObjectURL(url); elAudio = null; clearSpeak(card); };
+    elAudio.play();
+  } catch(e) {
+    clearSpeak(card);
+    console.error('ElevenLabs error:', e.message);
+  }
+}
+
+function stopSpeak() {
+  window.speechSynthesis.cancel();
+  if (elAudio) { elAudio.pause(); elAudio = null; }
+  if (speakingCard) clearSpeak(speakingCard);
+}
+
+function clearSpeak(card) {
+  card.classList.remove('speaking');
+  speakingCard = null;
+}
+</script>
+</body>
+</html>
