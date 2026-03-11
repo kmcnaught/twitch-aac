@@ -340,6 +340,95 @@
 
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* VOICE MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.18s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal-dialog {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; width: min(400px, calc(100vw - 28px));
+    max-height: calc(100dvh - 48px); overflow-y: auto;
+    padding: 22px 24px;
+    transform: translateY(10px); transition: transform 0.18s;
+  }
+  .modal-overlay.open .modal-dialog { transform: translateY(0); }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 17px; color: var(--text);
+  }
+  .modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 17px; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; line-height: 1; transition: color 0.15s;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .voice-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .voice-row:last-child { margin-bottom: 0; }
+  .voice-row label { font-size: 15px; color: var(--muted); white-space: nowrap; flex-shrink: 0; min-width: 84px; }
+
+  .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .modal-subsection-label {
+    font-size: 12px; color: var(--muted); letter-spacing: 0.07em;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+
+  .source-pills { display: flex; gap: 7px; }
+  .spill {
+    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
+    font-family: 'DM Mono', monospace; transition: all 0.15s;
+  }
+  .spill.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .spill:active { transform: scale(0.94); }
+
+  #voice-modal select {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 11px;
+    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 15px; flex: 1; outline: none; cursor: pointer; min-width: 0;
+    transition: border-color 0.2s; appearance: none;
+  }
+  #voice-modal select:focus { border-color: var(--accent); }
+  #voice-modal select option { background: var(--surface); }
+  #voice-modal input[type="password"] {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 11px;
+    padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 15px; flex: 1; outline: none; min-width: 0; transition: border-color 0.2s;
+  }
+  #voice-modal input[type="password"]:focus { border-color: var(--accent); }
+
+  .btn-load {
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    font-size: 15px; padding: 10px 16px; border-radius: 9px; cursor: pointer;
+    font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-load:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-load:disabled { opacity: 0.4; cursor: default; }
+
+  .voice-status { font-size: 14px; color: var(--muted); }
+  .voice-status.ok { color: var(--success); }
+  .voice-status.err { color: var(--accent2); }
+
+  .gender-pills { display: flex; gap: 7px; }
+  .gpill {
+    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
+    font-family: 'DM Mono', monospace; transition: all 0.15s;
+  }
+  .gpill.active { background: var(--accent2); border-color: var(--accent2); color: white; }
+  .gpill:active { transform: scale(0.94); }
 </style>
 </head>
 <body>
@@ -352,6 +441,7 @@
     <div class="status-dot" id="status-dot"></div>
     <div class="status-label" id="status-label">not connected</div>
     <button class="hbtn" id="setup-btn" onclick="toggleSetup()" aria-expanded="true" aria-controls="setup-panel">setup ▲</button>
+    <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
     <button class="hbtn" id="chat-btn" onclick="toggleChat()" aria-expanded="true" aria-controls="chat-panel">chat ▲</button>
     <button class="hbtn" onclick="enterFS()" aria-label="Enter fullscreen">⛶</button>
   </header>
@@ -374,6 +464,77 @@
         <label for="ctx-input">context</label>
         <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ VOICE MODAL ═══════════════ -->
+  <div class="modal-overlay" id="voice-modal" onclick="handleModalClick(event)">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span class="modal-title">voice settings</span>
+        <button class="modal-close" onclick="closeVoiceModal()">✕</button>
+      </div>
+
+      <div class="voice-row">
+        <label for="lang-select">language</label>
+        <select id="lang-select" onchange="saveLangChoice()">
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="nl">Dutch</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </div>
+
+      <div class="voice-row">
+        <label>voice source</label>
+        <div class="source-pills">
+          <button class="spill active" data-src="browser" onclick="setVoiceSource(this)">browser</button>
+          <button class="spill" data-src="elevenlabs" onclick="setVoiceSource(this)">ElevenLabs</button>
+        </div>
+      </div>
+
+      <hr class="modal-divider">
+
+      <div id="browser-section">
+        <div class="modal-subsection-label">browser voice</div>
+        <div class="voice-row">
+          <label for="browser-voice-select">voice</label>
+          <select id="browser-voice-select" onchange="saveBrowserVoice()">
+            <option value="">— system default —</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="el-section" style="display:none">
+        <div class="modal-subsection-label">ElevenLabs</div>
+        <div class="voice-row">
+          <label for="el-key-input">API key</label>
+          <input type="password" id="el-key-input" placeholder="sk-… (optional)" autocomplete="off"/>
+          <button class="btn-load" id="load-voices-btn" onclick="loadVoices()">load voices</button>
+        </div>
+        <div class="voice-row" id="gender-row" style="display:none">
+          <label>filter</label>
+          <div class="gender-pills">
+            <button class="gpill active" data-g="all" onclick="filterVoices(this)">all</button>
+            <button class="gpill" data-g="female" onclick="filterVoices(this)">female</button>
+            <button class="gpill" data-g="male" onclick="filterVoices(this)">male</button>
+          </div>
+        </div>
+        <div class="voice-row" id="voice-select-row" style="display:none">
+          <label for="voice-select">voice</label>
+          <select id="voice-select" onchange="saveVoiceChoice()">
+            <option value="">— select a voice —</option>
+          </select>
+        </div>
+        <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
+      </div>
+
     </div>
   </div>
 
@@ -450,6 +611,11 @@ let pendingFsGen = false;   // set true when startGenerating() triggers an auto-
 let bufferedFsMsgs = [];    // fs-chat messages held while a selection is active
 const MAX_MSG = 40;
 
+// ── ELEVENLABS STATE ──
+let elVoices = [];          // all voices fetched from ElevenLabs
+let elGenderFilter = 'all'; // 'all' | 'female' | 'male'
+let elAudio = null;         // current HTMLAudioElement for EL playback
+
 const VLENGTH = {
   short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',
   medium: 'All responses are approximately one sentence, 10–20 words each. The bonus option can be shorter or longer as feels right.',
@@ -477,6 +643,50 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim()));
   document.getElementById('ctx-input').addEventListener('change', () =>
     localStorage.setItem('context', document.getElementById('ctx-input').value.trim()));
+
+  // Load saved ElevenLabs key
+  const savedElKey = localStorage.getItem('el_key');
+  if (savedElKey) {
+    document.getElementById('el-key-input').value = savedElKey;
+  }
+  document.getElementById('el-key-input').addEventListener('input', () => {
+    localStorage.setItem('el_key', document.getElementById('el-key-input').value.trim());
+  });
+  document.getElementById('el-key-input').addEventListener('blur', () => {
+    if (document.getElementById('el-key-input').value.trim()) loadVoices();
+  });
+
+  // Restore saved EL voice data if key is present
+  const savedElVoices = localStorage.getItem('el_voices');
+  if (savedElKey && savedElVoices) {
+    try {
+      elVoices = JSON.parse(savedElVoices);
+      const savedGender = localStorage.getItem('el_gender') || 'all';
+      elGenderFilter = savedGender;
+      document.querySelectorAll('.gpill').forEach(p =>
+        p.classList.toggle('active', p.dataset.g === savedGender));
+      renderElVoices(localStorage.getItem('el_voice_id') || '');
+      setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
+    } catch(e) { /* ignore stale data */ }
+  }
+
+  // Language selector
+  const savedLang = localStorage.getItem('voice_lang') || 'en';
+  document.getElementById('lang-select').value = savedLang;
+
+  // Voice source
+  const savedSrc = localStorage.getItem('voice_source') || 'browser';
+  document.querySelectorAll('.spill').forEach(p =>
+    p.classList.toggle('active', p.dataset.src === savedSrc));
+  document.getElementById('browser-section').style.display = savedSrc === 'browser' ? 'block' : 'none';
+  document.getElementById('el-section').style.display = savedSrc === 'elevenlabs' ? 'block' : 'none';
+
+  // Browser TTS voices
+  populateBrowserVoices();
+  window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
+
+  // Escape closes voice modal
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
 });
 
 // ── COLLAPSE ──
@@ -493,6 +703,123 @@ function toggleChat() {
   const closed = el.classList.toggle('closed');
   btn.textContent = closed ? 'chat ▼' : 'chat ▲';
   btn.setAttribute('aria-expanded', !closed);
+}
+
+function openVoiceModal() {
+  document.getElementById('voice-modal').classList.add('open');
+}
+function closeVoiceModal() {
+  document.getElementById('voice-modal').classList.remove('open');
+}
+function handleModalClick(e) {
+  if (e.target === document.getElementById('voice-modal')) closeVoiceModal();
+}
+function setVoiceSource(btn) {
+  document.querySelectorAll('.spill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const src = btn.dataset.src;
+  localStorage.setItem('voice_source', src);
+  document.getElementById('browser-section').style.display = src === 'browser' ? 'block' : 'none';
+  document.getElementById('el-section').style.display = src === 'elevenlabs' ? 'block' : 'none';
+}
+
+// ── VOICE SETTINGS ──
+function setVoiceStatus(msg, cls='') {
+  const el = document.getElementById('voice-status');
+  el.textContent = msg;
+  el.className = 'voice-status' + (cls ? ' '+cls : '');
+}
+
+async function loadVoices() {
+  const key = document.getElementById('el-key-input').value.trim();
+  if (!key) { setVoiceStatus('enter your ElevenLabs API key first', 'err'); return; }
+  const btn = document.getElementById('load-voices-btn');
+  btn.disabled = true; btn.textContent = 'loading…';
+  setVoiceStatus('fetching voices…');
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: { 'xi-api-key': key, 'Authorization': `Bearer ${key}` }
+    });
+    if (!r.ok) {
+      if (r.status === 401) throw new Error('invalid API key — check it in your ElevenLabs account');
+      throw new Error(`${r.status} ${r.statusText}`);
+    }
+    const data = await r.json();
+    elVoices = data.voices || [];
+    localStorage.setItem('el_key', key);
+    localStorage.setItem('el_voices', JSON.stringify(elVoices));
+    renderElVoices('');
+    setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
+  } catch(e) {
+    setVoiceStatus('failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'load voices';
+  }
+}
+
+function filterVoices(btn) {
+  document.querySelectorAll('.gpill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  elGenderFilter = btn.dataset.g;
+  localStorage.setItem('el_gender', elGenderFilter);
+  renderElVoices(document.getElementById('voice-select').value);
+  saveVoiceChoice();
+}
+
+function renderElVoices(selectedId) {
+  const genderRow = document.getElementById('gender-row');
+  const selectRow = document.getElementById('voice-select-row');
+  const sel = document.getElementById('voice-select');
+  if (!elVoices.length) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
+
+  genderRow.style.display = 'flex';
+  selectRow.style.display = 'flex';
+
+  const filtered = elGenderFilter === 'all'
+    ? elVoices
+    : elVoices.filter(v => (v.labels?.gender || '').toLowerCase() === elGenderFilter);
+
+  sel.innerHTML = '<option value="">— browser TTS —</option>';
+  filtered.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voice_id;
+    const gender = v.labels?.gender ? ` · ${v.labels.gender}` : '';
+    const accent = v.labels?.accent ? ` · ${v.labels.accent}` : '';
+    opt.textContent = `${v.name}${gender}${accent}`;
+    if (v.voice_id === selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function saveVoiceChoice() {
+  localStorage.setItem('el_voice_id', document.getElementById('voice-select').value);
+}
+
+function saveLangChoice() {
+  localStorage.setItem('voice_lang', document.getElementById('lang-select').value);
+  populateBrowserVoices();
+}
+
+// ── BROWSER TTS VOICES ──
+let browserVoices = [];
+function populateBrowserVoices() {
+  const lang = localStorage.getItem('voice_lang') || 'en';
+  browserVoices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith(lang));
+  const sel = document.getElementById('browser-voice-select');
+  if (!sel) return;
+  const saved = localStorage.getItem('browser_voice');
+  sel.innerHTML = '<option value="">— system default —</option>';
+  browserVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (v.name === saved) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function saveBrowserVoice() {
+  localStorage.setItem('browser_voice', document.getElementById('browser-voice-select').value);
 }
 
 // ── FULLSCREEN ──
@@ -719,7 +1046,14 @@ async function gen(isFs=false) {
     document.getElementById('gen-btn').disabled = true;
   }
 
+  const langCode = localStorage.getItem('voice_lang') || 'en';
+  const langNames = { en:'English', fr:'French', de:'German', es:'Spanish', it:'Italian', pt:'Portuguese', nl:'Dutch', ja:'Japanese', ko:'Korean', zh:'Chinese' };
+  const langName = langNames[langCode] || langCode;
+  const langInstruction = `Language: Respond in ${langName}. You may naturally incorporate words or short phrases borrowed from other languages where they appear in the chat and suit the streamer's voice.`;
+
   const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
+
+${langInstruction}
 
 Length rule: ${VLENGTH[verbosity]}
 
@@ -797,18 +1131,58 @@ function speak(text, card) {
   flushBufferedFsMsgs();
   speakingCard = card;
   card.classList.add('speaking');
+
+  const voiceId = document.getElementById('voice-select')?.value || '';
+  const elKey = localStorage.getItem('el_key') || '';
+
+  if (elKey && voiceId) {
+    speakElevenLabs(text, elKey, voiceId, card);
+  } else {
+    speakBrowser(text, card);
+  }
+}
+
+function speakBrowser(text, card) {
   const u = new SpeechSynthesisUtterance(text);
-  const v = window.speechSynthesis.getVoices().find(v =>
-    v.name.includes('Samantha') || v.name.includes('Karen') ||
-    v.name.includes('Daniel') || v.lang === 'en-US');
-  if (v) u.voice = v;
+  const savedVoiceName = localStorage.getItem('browser_voice') ||
+    document.getElementById('browser-voice-select')?.value || '';
+  const allVoices = window.speechSynthesis.getVoices();
+  const chosen = savedVoiceName
+    ? allVoices.find(v => v.name === savedVoiceName)
+    : allVoices.find(v => v.lang.startsWith('en'));
+  if (chosen) u.voice = chosen;
   u.rate = 0.95;
   u.onend = u.onerror = () => clearSpeak(card);
   window.speechSynthesis.speak(u);
 }
 
+async function speakElevenLabs(text, key, voiceId, card) {
+  if (elAudio) { elAudio.pause(); elAudio = null; }
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    elAudio = new Audio(url);
+    elAudio.onended = elAudio.onerror = () => { URL.revokeObjectURL(url); elAudio = null; clearSpeak(card); };
+    elAudio.play();
+  } catch(e) {
+    clearSpeak(card);
+    setVoiceStatus('error: ' + e.message, 'err');
+  }
+}
+
 function stopSpeak() {
   window.speechSynthesis.cancel();
+  if (elAudio) { elAudio.pause(); elAudio = null; }
   if (speakingCard) clearSpeak(speakingCard);
 }
 
@@ -817,7 +1191,7 @@ function clearSpeak(card) {
   speakingCard = null;
 }
 
-window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
 </script>
 </body>
 </html>
