@@ -14,9 +14,10 @@
     --accent: #7c6aff;
     --accent2: #ff6a9b;
     --text: #e2e2f0;
-    --muted: #555570;
+    --muted: #8080a8;
     --chat-bg: #0e0e16;
     --success: #4ade80;
+    --border-ui: #404068;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -67,7 +68,7 @@
   .status-label { font-size: 18px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .hbtn {
-    background: none; border: 1px solid var(--border); color: var(--muted);
+    background: none; border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 16px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
     font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
   }
@@ -84,7 +85,7 @@
   label { font-size: 16px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
   input[type="text"], input[type="password"] {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 11px;
+    background: var(--surface); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 14px 18px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 19px; flex: 1; outline: none; transition: border-color 0.2s; min-width: 0;
   }
@@ -116,7 +117,7 @@
   }
 
   .pill {
-    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 18px; padding: 8px 16px; border-radius: 27px; cursor: pointer;
     font-family: 'DM Mono', monospace; transition: all 0.15s; white-space: nowrap;
   }
@@ -219,7 +220,7 @@
   #fs-suggest-btn:not(:disabled):active { transform: scale(0.96); }
 
   .btn-exit-fs {
-    background: none; border: 1px solid var(--border); color: var(--muted);
+    background: none; border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 15px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
     font-family: 'DM Mono', monospace; flex-shrink: 0;
   }
@@ -386,7 +387,7 @@
 
   .source-pills { display: flex; gap: 7px; }
   .spill {
-    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
     font-family: 'DM Mono', monospace; transition: all 0.15s;
   }
@@ -394,7 +395,7 @@
   .spill:active { transform: scale(0.94); }
 
   #voice-modal select {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 11px;
+    background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; cursor: pointer; min-width: 0;
     transition: border-color 0.2s; appearance: none;
@@ -402,14 +403,14 @@
   #voice-modal select:focus { border-color: var(--accent); }
   #voice-modal select option { background: var(--surface); }
   #voice-modal input[type="password"] {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 11px;
+    background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; min-width: 0; transition: border-color 0.2s;
   }
   #voice-modal input[type="password"]:focus { border-color: var(--accent); }
 
   .btn-load {
-    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 15px; padding: 10px 16px; border-radius: 9px; cursor: pointer;
     font-family: 'DM Mono', monospace; flex-shrink: 0; transition: all 0.15s;
     white-space: nowrap;
@@ -423,7 +424,7 @@
 
   .gender-pills { display: flex; gap: 7px; }
   .gpill {
-    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
     font-size: 15px; padding: 7px 14px; border-radius: 27px; cursor: pointer;
     font-family: 'DM Mono', monospace; transition: all 0.15s;
   }
@@ -556,7 +557,6 @@
   </div>
 
   <div id="responses-area">
-    <div class="empty-state">suggestions will appear here</div>
   </div>
 
 </div>
