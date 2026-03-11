@@ -83,7 +83,7 @@
   .hbtn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* SETUP */
-  #setup-panel { max-height: 460px; border-bottom: 1px solid var(--border); }
+  #setup-panel { max-height: 460px; min-height: 0; overflow-y: auto; flex-shrink: 1; border-bottom: 1px solid var(--border); }
   #setup-inner { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
 
   .row { display: flex; gap: 11px; align-items: center; }
@@ -138,9 +138,11 @@
     display: flex; flex-direction: column; gap: 3px; background: var(--chat-bg);
   }
   .chat-msg { font-size: 18px; line-height: 1.6; padding: 4px 0; border-bottom: 1px solid var(--chat-msg-border); animation: fadeIn 0.2s; }
+  .chat-msg.excluded { opacity: 0.4; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none} }
   .chat-user { font-weight: 500; margin-right: 7px; }
   .chat-text { color: #8080a0; }
+  .chat-emote { height: 1.4em; vertical-align: middle; display: inline-block; }
   .empty-state { color: var(--muted); font-size: 15px; text-align: center; padding: 22px 0; }
 
   /* GEN BAR */
@@ -351,6 +353,7 @@
     border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
     animation: fadeIn 0.2s;
   }
+  .fs-chat-msg.excluded { opacity: 0.4; }
   .fs-chat-msg:hover { background: rgba(124,106,255,0.08); border-color: rgba(124,106,255,0.2); }
   .fs-chat-msg.selected {
     background: rgba(124,106,255,0.15); border-color: var(--accent);

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>StreamAAC</title>
 <link rel="stylesheet" href="styles.css">
+<script src="chat-core.js" defer></script>
 </head>
 <body>
 
@@ -38,16 +39,23 @@
         <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
       </div>
       <div class="row">
+        <label for="bots-input">ignore bots</label>
+        <input type="text" id="bots-input" placeholder="e.g. Nightbot, StreamElements" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+      </div>
+      <div class="row">
         <label for="game-select">game</label>
         <select id="game-select">
           <option value="">— not specified —</option>
           <option value="Just Chatting">Just Chatting</option>
-          <option value="League of Legends">League of Legends</option>
-          <option value="Fortnite">Fortnite</option>
-          <option value="Minecraft">Minecraft</option>
-          <option value="Grand Theft Auto V">Grand Theft Auto V</option>
-          <option value="Valorant">Valorant</option>
+          <option value="Animal Crossing">Animal Crossing</option>
           <option value="Apex Legends">Apex Legends</option>
+          <option value="Fortnite">Fortnite</option>
+          <option value="Grand Theft Auto V">Grand Theft Auto V</option>
+          <option value="House Flipper">House Flipper</option>
+          <option value="League of Legends">League of Legends</option>
+          <option value="Minecraft">Minecraft</option>
+          <option value="PowerWash Simulator 2">PowerWash Simulator 2</option>
+          <option value="Valorant">Valorant</option>
           <option value="other">Other…</option>
         </select>
         <input type="text" id="game-custom-input" placeholder="game name"
@@ -143,24 +151,14 @@
 </div>
 
 <script>
-// ── CONFIG ──
-const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
-
 // ── STATE ──
-let ws = null, messages = [], isConnected = false, speakingCard = null;
+let ws = null, chatLog = [], isConnected = false;
 let theme = localStorage.getItem('theme') || 'dark';
 const MAX_MSG = 40;
 
 // ── ELEVENLABS STATE ──
 let elVoices = [];
 let elGenderFilter = 'all';
-let elAudio = null;
-
-const VLENGTH = {
-  short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',
-  medium: 'All responses are approximately one sentence, 10–20 words each. The bonus option can be shorter or longer as feels right.',
-  long:   'All responses are 2–3 sentences, expansive and conversational. The bonus option can vary in length as appropriate.'
-};
 
 // ── THEME ──
 function toggleTheme() {
@@ -194,6 +192,13 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('persona', document.getElementById('persona-input').value.trim()));
   document.getElementById('ctx-input').addEventListener('change', () =>
     localStorage.setItem('context', document.getElementById('ctx-input').value.trim()));
+
+  const savedBots = localStorage.getItem('ignored_bots');
+  if (savedBots) document.getElementById('bots-input').value = savedBots;
+  document.getElementById('bots-input').addEventListener('change', () => {
+    localStorage.setItem('ignored_bots', document.getElementById('bots-input').value.trim());
+    invalidateBotCache();
+  });
 
   // Game select
   const savedGame = localStorage.getItem('game') || '';
@@ -382,6 +387,8 @@ function startGenerating() {
   localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim());
   localStorage.setItem('persona', document.getElementById('persona-input').value.trim());
   localStorage.setItem('context', document.getElementById('ctx-input').value.trim());
+  localStorage.setItem('ignored_bots', document.getElementById('bots-input').value.trim());
+  invalidateBotCache();
   const gameVal = document.getElementById('game-select').value;
   localStorage.setItem('game', gameVal);
   localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
@@ -424,8 +431,8 @@ function connect() {
       btn.textContent = 'leave'; btn.className = 'btn-connect off';
       clearEmptyMsg();
     }
-    const m = raw.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
-    if (m) addMsg(m[1], m[2]);
+    const msg = parseIrcMsg(raw);
+    if (msg) addMsg(msg.user, msg.text, msg.emotesTag);
   };
   ws.onerror = () => {
     setStatus('error', 'error'); btn.textContent = 'retry'; btn.className = 'btn-connect'; isConnected = false;
@@ -449,24 +456,24 @@ function clearEmptyMsg() {
   const e = document.getElementById('empty-msg'); if (e) e.remove();
 }
 
-function addMsg(user, text) {
-  messages.push({ user, text });
-  if (messages.length > MAX_MSG) messages.shift();
+function addMsg(user, rawText, emotesTag) {
+  const llmText = replaceEmotes(rawText, emotesTag);
+  const excluded = isExcluded(user, rawText);
+  chatLog.push({ user, text: llmText, excluded });
+  if (chatLog.length > MAX_MSG) chatLog.shift();
 
   const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
   const col = cols[user.charCodeAt(0) % cols.length];
 
   const ca = document.getElementById('chat-area');
   ca.insertAdjacentHTML('beforeend',
-    `<div class="chat-msg"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${x(text)}</span></div>`);
+    `<div class="chat-msg${excluded ? ' excluded' : ''}"><span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${renderEmotes(rawText, emotesTag)}</span></div>`);
   ca.scrollTop = ca.scrollHeight;
 }
 
-function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
 // ── GENERATE (compact view) ──
 async function gen() {
-  const chat = messages.slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
+  const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
   if (!chat) { alert('No chat messages yet'); return; }
 
   const persona = document.getElementById('persona-input').value.trim() || 'a streamer';
@@ -483,7 +490,7 @@ async function gen() {
   const langName = langNames[langCode] || langCode;
   const langInstruction = `Language: Respond in ${langName}. You may naturally incorporate words or short phrases borrowed from other languages where they appear in the chat and suit the streamer's voice.`;
 
-  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
+  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only. [emote] in chat marks a Twitch visual emote — do not say it aloud.
 
 ${langInstruction}
 
@@ -541,63 +548,14 @@ function speak(text, card) {
   speakingCard = card;
   card.classList.add('speaking');
 
-  const voiceId = document.getElementById('voice-select')?.value || '';
+  const voiceId = localStorage.getItem('el_voice_id') || '';
   const elKey = localStorage.getItem('el_key') || '';
 
   if (elKey && voiceId) {
-    speakElevenLabs(text, elKey, voiceId, card);
+    speakElevenLabs(text, elKey, voiceId, card, msg => setVoiceStatus('error: ' + msg, 'err'));
   } else {
     speakBrowser(text, card);
   }
-}
-
-function speakBrowser(text, card) {
-  const u = new SpeechSynthesisUtterance(text);
-  const savedVoiceName = localStorage.getItem('browser_voice') ||
-    document.getElementById('browser-voice-select')?.value || '';
-  const allVoices = window.speechSynthesis.getVoices();
-  const chosen = savedVoiceName
-    ? allVoices.find(v => v.name === savedVoiceName)
-    : allVoices.find(v => v.lang.startsWith('en'));
-  if (chosen) u.voice = chosen;
-  u.rate = 0.95;
-  u.onend = u.onerror = () => clearSpeak(card);
-  window.speechSynthesis.speak(u);
-}
-
-async function speakElevenLabs(text, key, voiceId, card) {
-  if (elAudio) { elAudio.pause(); elAudio = null; }
-  try {
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-      method: 'POST',
-      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-      })
-    });
-    if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    elAudio = new Audio(url);
-    elAudio.onended = elAudio.onerror = () => { URL.revokeObjectURL(url); elAudio = null; clearSpeak(card); };
-    elAudio.play();
-  } catch(e) {
-    clearSpeak(card);
-    setVoiceStatus('error: ' + e.message, 'err');
-  }
-}
-
-function stopSpeak() {
-  window.speechSynthesis.cancel();
-  if (elAudio) { elAudio.pause(); elAudio = null; }
-  if (speakingCard) clearSpeak(speakingCard);
-}
-
-function clearSpeak(card) {
-  card.classList.remove('speaking');
-  speakingCard = null;
 }
 </script>
 </body>
