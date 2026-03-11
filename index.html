@@ -195,6 +195,7 @@
      FULLSCREEN VIEW
   ═══════════════════════════════════ */
   #fs-view {
+    --fs-font-size: 17px;
     display: none; position: fixed; inset: 0; z-index: 100;
     background: var(--bg); flex-direction: column;
   }
@@ -258,7 +259,7 @@
     font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px;
     color: var(--accent); line-height: 1; flex-shrink: 0; width: 28px;
   }
-  .fs-rtext { font-size: 15px; line-height: 1.5; color: var(--text); flex: 1; }
+  .fs-rtext { font-size: var(--fs-font-size); line-height: 1.5; color: var(--text); flex: 1; }
 
   .fs-card-btns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
   .fs-speak, .fs-stop {
@@ -306,9 +307,33 @@
   }
   #fs-new-msgs-btn:hover { background: #9b6aff; }
 
+  .fs-font-size-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .fs-font-size-ctrl button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 9px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    line-height: 1;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .fs-font-size-ctrl button:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
   /* Selectable chat messages in fullscreen */
   .fs-chat-msg {
-    font-size: 15px; line-height: 1.6; padding: 7px 8px; border-radius: 8px;
+    font-size: var(--fs-font-size); line-height: 1.6; padding: 7px 8px; border-radius: 8px;
     border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
     animation: fadeIn 0.2s;
   }
@@ -573,6 +598,10 @@
       <button class="pill" data-fv="medium" onclick="setFV(this)">1 sentence</button>
       <button class="pill" data-fv="long" onclick="setFV(this)">longer</button>
     </div>
+    <div class="fs-font-size-ctrl">
+      <button id="fs-font-down" title="Decrease font size">A<sup>−</sup></button>
+      <button id="fs-font-up" title="Increase font size">A<sup>+</sup></button>
+    </div>
     <button id="fs-suggest-btn" class="btn-gen" onclick="gen(true)" disabled>suggest</button>
     <button class="btn-exit-fs" onclick="exitFS()">✕ exit</button>
   </div>
@@ -607,6 +636,7 @@ const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
 let ws = null, messages = [], isConnected = false, speakingCard = null;
 let verbosity = 'short';
 let selectedMsg = null;     // { user, text } — fullscreen selected chat message
+let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '17');
 let pendingFsGen = false;   // set true when startGenerating() triggers an auto-connect
 let bufferedFsMsgs = [];    // fs-chat messages held while a selection is active
 const MAX_MSG = 40;
@@ -823,6 +853,19 @@ function saveBrowserVoice() {
 }
 
 // ── FULLSCREEN ──
+function applyFsFontSize() {
+  document.getElementById('fs-view').style.setProperty('--fs-font-size', fsFontSize + 'px');
+}
+
+document.getElementById('fs-font-down').onclick = () => {
+  if (fsFontSize > 10) { fsFontSize = Math.max(10, fsFontSize - 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
+};
+document.getElementById('fs-font-up').onclick = () => {
+  if (fsFontSize < 28) { fsFontSize = Math.min(28, fsFontSize + 2); applyFsFontSize(); localStorage.setItem('fsFontSize', fsFontSize); }
+};
+
+applyFsFontSize();
+
 function enterFS() { document.getElementById('fs-view').classList.add('active'); }
 function exitFS()  { document.getElementById('fs-view').classList.remove('active'); }
 function closeFsChat() {
