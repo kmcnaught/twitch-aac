@@ -228,8 +228,8 @@
 
   .btn-back {
     background: none; border: 1px solid var(--border-ui); color: var(--muted);
-    cursor: pointer; padding: 6px 12px; font-family: 'Syne', sans-serif;
-    font-size: 13px; border-radius: 8px; transition: border-color 0.15s, color 0.15s;
+    cursor: pointer; padding: 8px 12px; font-family: 'Syne', sans-serif;
+    font-size: 18px; border-radius: 8px; transition: border-color 0.15s, color 0.15s;
     flex-shrink: 0;
   }
   .btn-back:hover { border-color: var(--accent); color: var(--text); }
