@@ -355,6 +355,13 @@
     animation: fadeIn 0.2s;
   }
   .fs-chat-msg.excluded { opacity: 0.4; }
+  .fs-chat-divider {
+    text-align: center; font-size: 12px; color: var(--muted);
+    padding: 6px 0; margin: 4px 0;
+    border-top: 1px solid var(--chat-msg-border);
+    border-bottom: 1px solid var(--chat-msg-border);
+    opacity: 0.7;
+  }
   .fs-chat-msg:hover { background: rgba(124,106,255,0.08); border-color: rgba(124,106,255,0.2); }
   .fs-chat-msg.selected {
     background: rgba(124,106,255,0.15); border-color: var(--accent);

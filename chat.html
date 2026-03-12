@@ -169,11 +169,13 @@ function connect(rawCh) {
     const raw = e.data.trim();
     if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
     if (raw.includes('366')) {
+      const wasReconnect = everConnected && !isConnected;
       isConnected = true;
       everConnected = true;
       setStatus('connected', '#' + ch);
       setFsSuggestEnabled(true);
       clearEmptyMsg();
+      if (wasReconnect) addChatDivider('— reconnected —');
     }
     const msg = parseIrcMsg(raw);
     if (msg) addMsg(msg.user, msg.text, msg.emotesTag);
@@ -190,6 +192,7 @@ function connect(rawCh) {
     isConnected = false;
     setFsSuggestEnabled(false);
     if (everConnected) {
+      addChatDivider('— temporarily disconnected —');
       scheduleReconnect();
     } else {
       handleConnectFailure(ch);
@@ -203,6 +206,17 @@ document.addEventListener('visibilitychange', () => {
     connect(currentChannel);
   }
 });
+
+// ── CHAT DIVIDER ──
+function addChatDivider(text) {
+  const fca = document.getElementById('fs-chat-area');
+  if (!fca) return;
+  const el = document.createElement('div');
+  el.className = 'fs-chat-divider';
+  el.textContent = text;
+  fca.appendChild(el);
+  fca.scrollTop = fca.scrollHeight;
+}
 
 // ── CHAT ──
 function clearEmptyMsg() {
