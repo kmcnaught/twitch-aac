@@ -55,7 +55,9 @@
 
 <script>
 // ── STATE ──
-let ws = null, chatLog = [], isConnected = false;
+let ws = null, chatLog = [], isConnected = false, everConnected = false;
+let currentChannel = '';
+let reconnectTimer = null;
 let verbosity = 'short';
 let selectedMsg = null;
 let fsFontSize = parseInt(localStorage.getItem('fsFontSize') || '17');
@@ -137,11 +139,18 @@ function connect(rawCh) {
   let ch = rawCh.trim().toLowerCase();
   ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   if (!ch) return;
-  let alertedFailure = false;
+  currentChannel = ch;
+  clearTimeout(reconnectTimer);
 
   function handleConnectFailure(ch) {
     alert(`Could not connect to Twitch chat for "${ch}".\nCheck the channel name and try again.`);
     window.location.href = 'index.html';
+  }
+
+  function scheduleReconnect() {
+    clearTimeout(reconnectTimer);
+    setStatus('connecting', 'reconnecting…');
+    reconnectTimer = setTimeout(() => connect(currentChannel), 4000);
   }
 
   setStatus('connecting', 'connecting…');
@@ -161,6 +170,7 @@ function connect(rawCh) {
     if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
     if (raw.includes('366')) {
       isConnected = true;
+      everConnected = true;
       setStatus('connected', '#' + ch);
       setFsSuggestEnabled(true);
       clearEmptyMsg();
@@ -169,21 +179,30 @@ function connect(rawCh) {
     if (msg) addMsg(msg.user, msg.text, msg.emotesTag);
   };
   ws.onerror = () => {
-    setStatus('error', 'connection error');
     isConnected = false;
-    alertedFailure = true;
-    handleConnectFailure(ch);
+    if (!everConnected) {
+      setStatus('error', 'connection error');
+      // onclose will fire next and handle the alert
+    }
   };
   ws.onclose = () => {
-    if (isConnected) {
-      setStatus('error', 'disconnected');
-      isConnected = false;
-      setFsSuggestEnabled(false);
-    } else if (!alertedFailure) {
+    if (ws !== sock) return;
+    isConnected = false;
+    setFsSuggestEnabled(false);
+    if (everConnected) {
+      scheduleReconnect();
+    } else {
       handleConnectFailure(ch);
     }
   };
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !isConnected && everConnected) {
+    clearTimeout(reconnectTimer);
+    connect(currentChannel);
+  }
+});
 
 // ── CHAT ──
 function clearEmptyMsg() {
