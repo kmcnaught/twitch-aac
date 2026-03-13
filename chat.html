@@ -297,8 +297,7 @@ function openFsChat() {
 
 // ── GENERATE ──
 async function gen() {
-  const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n');
-  if (!chat) { alert('No chat messages yet'); return; }
+  const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n') || '(no chat messages yet — streamer just went live)';
 
   const persona    = localStorage.getItem('persona') || 'a streamer';
   let handle       = (localStorage.getItem('twitch_handle') || '').trim().toLowerCase();
