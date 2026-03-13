@@ -40,6 +40,7 @@
         <button id="fs-magic-btn" title="Generate suggestions from keywords" onclick="genFromKeywords()" disabled>🪄</button>
         <input type="text" id="fs-custom-input" placeholder="type keywords or exact phrase…" autocomplete="off">
         <button id="fs-custom-speak-btn" title="Speak this text" onclick="speakCustomText()">🔊</button>
+        <button id="fs-custom-stop-btn" title="Stop speaking" onclick="stopSpeak()">■</button>
       </div>
     </div>
     <div id="fs-chat-panel">
@@ -403,7 +404,7 @@ function speak(text, card) {
 function speakCustomText() {
   const text = document.getElementById('fs-custom-input').value.trim();
   if (!text) return;
-  speak(text, null);
+  speak(text, document.getElementById('fs-custom-bar'));
 }
 
 // ── GENERATE FROM KEYWORDS ──
