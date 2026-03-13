@@ -29,10 +29,17 @@
   </div>
 
   <div id="fs-body">
-    <div id="fs-responses">
-      <div id="fs-empty-state">
-        <button id="fs-suggest-prominent" onclick="gen()" disabled>suggest</button>
-        <div class="fs-empty-hint">hit suggest to generate responses</div>
+    <div id="fs-main">
+      <div id="fs-responses">
+        <div id="fs-empty-state">
+          <button id="fs-suggest-prominent" onclick="gen()">suggest</button>
+          <div class="fs-empty-hint">hit suggest to generate responses</div>
+        </div>
+      </div>
+      <div id="fs-custom-bar">
+        <button id="fs-magic-btn" title="Generate suggestions from keywords" onclick="genFromKeywords()" disabled>🪄</button>
+        <input type="text" id="fs-custom-input" placeholder="type keywords or exact phrase…" autocomplete="off">
+        <button id="fs-custom-speak-btn" title="Speak this text" onclick="speakCustomText()">🔊</button>
       </div>
     </div>
     <div id="fs-chat-panel">
@@ -46,7 +53,7 @@
       <button id="fs-new-msgs-btn" onclick="acceptNewMessages()">
         ↓ <span id="fs-new-msgs-count"></span> new messages
       </button>
-      <button id="fs-suggest-btn" class="btn-gen" onclick="gen()" disabled>suggest</button>
+      <button id="fs-suggest-btn" class="btn-gen" onclick="gen()">suggest</button>
     </div>
     <button id="fs-open-chat" onclick="openFsChat()" aria-label="Open chat panel">chat ›</button>
   </div>
@@ -130,6 +137,7 @@ function setStatus(cls, txt) {
 // ── SUGGEST BUTTONS ──
 function setFsSuggestEnabled(enabled) {
   document.getElementById('fs-suggest-btn').disabled = !enabled;
+  document.getElementById('fs-magic-btn').disabled = !enabled;
   const prominent = document.getElementById('fs-suggest-prominent');
   if (prominent) prominent.disabled = !enabled;
 }
@@ -379,7 +387,7 @@ function speak(text, card) {
   clearSelection();
   flushBufferedFsMsgs();
   speakingCard = card;
-  card.classList.add('speaking');
+  if (card) card.classList.add('speaking');
 
   const voiceId = localStorage.getItem('el_voice_id') || '';
   const elKey   = localStorage.getItem('el_key') || '';
@@ -388,6 +396,76 @@ function speak(text, card) {
     speakElevenLabs(text, elKey, voiceId, card);
   } else {
     speakBrowser(text, card);
+  }
+}
+
+// ── SPEAK CUSTOM TEXT ──
+function speakCustomText() {
+  const text = document.getElementById('fs-custom-input').value.trim();
+  if (!text) return;
+  speak(text, null);
+}
+
+// ── GENERATE FROM KEYWORDS ──
+async function genFromKeywords() {
+  const keywords = document.getElementById('fs-custom-input').value.trim();
+  if (!keywords) return;
+
+  const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n') || '(no chat messages yet)';
+
+  const persona    = localStorage.getItem('persona') || 'a streamer';
+  let handle       = (localStorage.getItem('twitch_handle') || '').trim().toLowerCase();
+  handle = handle.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
+  const ctx        = localStorage.getItem('context') || '';
+  const game       = localStorage.getItem('game') || '';
+  const gameCustom = localStorage.getItem('game_custom') || '';
+  const gameStr    = game === 'other' ? gameCustom : game;
+
+  document.getElementById('fs-responses').innerHTML =
+    `<div class="fs-loader"><div class="spinner"></div>generating…</div>`;
+  setFsSuggestEnabled(false);
+
+  const langCode = localStorage.getItem('voice_lang') || 'en';
+  const langNames = { en:'English', fr:'French', de:'German', es:'Spanish', it:'Italian', pt:'Portuguese', nl:'Dutch', ja:'Japanese', ko:'Korean', zh:'Chinese' };
+  const langName = langNames[langCode] || langCode;
+  const langInstruction = `Language: Respond in ${langName}.`;
+
+  const prompt = `You generate spoken responses for ${persona}, a Twitch streamer who uses AAC (Augmentative and Alternative Communication). Output will be spoken aloud — no markdown, no asterisks, plain natural speech only.
+
+${langInstruction}
+
+Length rule: ${VLENGTH[verbosity]}
+
+The streamer has typed these keywords or a rough phrase they want to express: "${keywords}"
+Use this as your primary guide. Expand or rephrase into 4 natural spoken AAC responses that capture this intent, varying in tone: one warm/engaged, one witty/playful, one direct, one bonus of whatever tone fits best.
+Reply ONLY with valid JSON, no other text: {"responses":["...","...","...","..."]}
+
+Recent chat (for context):
+${chat}${handle ? '\nStreamer handle: @'+handle : ''}${ctx ? '\nContext: '+ctx : ''}${gameStr ? '\nGame: '+gameStr : ''}`;
+
+  try {
+    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message ?? JSON.stringify(d.error));
+
+    const raw = d.content?.[0]?.text ?? '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+    renderFsCards(JSON.parse(jsonMatch[0]).responses);
+  } catch(e) {
+    document.getElementById('fs-responses').innerHTML =
+      `<div class="fs-loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
+  } finally {
+    setFsSuggestEnabled(true);
   }
 }
 </script>

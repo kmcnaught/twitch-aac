@@ -121,6 +121,6 @@ function stopSpeak() {
 }
 
 function clearSpeak(card) {
-  card.classList.remove('speaking');
+  if (card) card.classList.remove('speaking');
   speakingCard = null;
 }
