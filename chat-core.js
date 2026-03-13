@@ -142,3 +142,21 @@ function clearSpeak(card) {
   if (card) card.classList.remove('speaking');
   speakingCard = null;
 }
+
+// ── CLEAR BUTTONS ──
+function initClearBtn(inputEl, clearBtn, onClear) {
+  if (!inputEl || !clearBtn) return;
+  function update() {
+    clearBtn.classList.toggle('visible', inputEl.value.length > 0);
+  }
+  inputEl.addEventListener('input', update);
+  clearBtn.addEventListener('click', () => {
+    inputEl.value = '';
+    update();
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    if (onClear) onClear();
+    inputEl.focus();
+  });
+  update();
+}

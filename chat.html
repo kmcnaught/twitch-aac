@@ -39,6 +39,7 @@
       <div id="fs-custom-bar">
         <button id="fs-magic-btn" title="Generate suggestions from keywords" onclick="genFromKeywords()" disabled>🪄</button>
         <input type="text" id="fs-custom-input" placeholder="type keywords or exact phrase…" autocomplete="off">
+        <button id="fs-custom-clear" aria-label="Clear">✕</button>
         <button id="fs-custom-speak-btn" title="Speak this text" onclick="speakCustomText()">🔊</button>
         <button id="fs-custom-stop-btn" title="Stop speaking" onclick="stopSpeak()">■</button>
       </div>
@@ -95,6 +96,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // Auto-connect
   const ch = localStorage.getItem('twitch_channel');
   if (ch) connect(ch);
+
+  initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
 });
 
 // ── THEME ──

@@ -21,23 +21,38 @@
   <div id="setup-panel">
     <div id="setup-inner">
       <div class="row">
-        <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        <div class="input-wrap">
+          <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
       <div class="row">
         <label for="handle-input">your handle</label>
-        <input type="text" id="handle-input" placeholder="your twitch username" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        <div class="input-wrap">
+          <input type="text" id="handle-input" placeholder="your twitch username" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
       <div class="row">
         <label for="persona-input">persona</label>
-        <input type="text" id="persona-input" placeholder="e.g. chill FPS streamer, sarcastic"/>
+        <div class="input-wrap">
+          <input type="text" id="persona-input" placeholder="e.g. chill FPS streamer, sarcastic"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
       <div class="row">
         <label for="ctx-input">context</label>
-        <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
+        <div class="input-wrap">
+          <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
       <div class="row">
         <label for="bots-input">ignore bots</label>
-        <input type="text" id="bots-input" placeholder="e.g. Nightbot, StreamElements" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        <div class="input-wrap">
+          <input type="text" id="bots-input" placeholder="e.g. Nightbot, StreamElements" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
       <div class="row">
         <label for="game-select">game</label>
@@ -55,8 +70,10 @@
           <option value="Valorant">Valorant</option>
           <option value="other">Other…</option>
         </select>
-        <input type="text" id="game-custom-input" placeholder="game name"
-               style="display:none" autocorrect="off" spellcheck="false"/>
+        <div class="input-wrap" id="game-custom-wrap" style="display:none">
+          <input type="text" id="game-custom-input" placeholder="game name" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
       </div>
     </div>
   </div>
@@ -112,7 +129,10 @@
         <div class="modal-subsection-label">ElevenLabs</div>
         <div class="voice-row">
           <label for="el-key-input">API key</label>
-          <input type="password" id="el-key-input" placeholder="sk-… (optional)" autocomplete="off"/>
+          <div class="input-wrap">
+            <input type="password" id="el-key-input" placeholder="sk-… (optional)" autocomplete="off"/>
+            <button class="input-clear" aria-label="Clear">✕</button>
+          </div>
           <button class="btn-load" id="load-voices-btn" onclick="loadVoices()">load voices</button>
         </div>
         <div class="voice-row" id="gender-row" style="display:none">
@@ -197,14 +217,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedGame = localStorage.getItem('game') || '';
   if (savedGame) document.getElementById('game-select').value = savedGame;
   if (savedGame === 'other') {
-    document.getElementById('game-custom-input').style.display = '';
+    document.getElementById('game-custom-wrap').style.display = '';
     const savedCustom = localStorage.getItem('game_custom') || '';
     if (savedCustom) document.getElementById('game-custom-input').value = savedCustom;
   }
   document.getElementById('game-select').addEventListener('change', () => {
     const val = document.getElementById('game-select').value;
     localStorage.setItem('game', val);
-    document.getElementById('game-custom-input').style.display = val === 'other' ? '' : 'none';
+    document.getElementById('game-custom-wrap').style.display = val === 'other' ? '' : 'none';
   });
   document.getElementById('game-custom-input').addEventListener('change', () => {
     localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
@@ -255,6 +275,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Escape closes voice modal
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
+
+  // Clear buttons
+  ['channel-input','handle-input','persona-input','ctx-input','bots-input'].forEach(id => {
+    const inp = document.getElementById(id);
+    initClearBtn(inp, inp.parentElement.querySelector('.input-clear'));
+  });
+
+  const gameCustom = document.getElementById('game-custom-input');
+  initClearBtn(gameCustom, gameCustom.parentElement.querySelector('.input-clear'));
+
+  const elKey = document.getElementById('el-key-input');
+  initClearBtn(elKey, elKey.parentElement.querySelector('.input-clear'));
 });
 
 // ── VOICE MODAL ──

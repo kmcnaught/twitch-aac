@@ -523,3 +523,62 @@
   }
   .gpill.active { background: var(--accent2); border-color: var(--accent2); color: white; }
   .gpill:active { transform: scale(0.94); }
+
+/* ── Input clear button ── */
+.input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.input-wrap input[type="text"],
+.input-wrap input[type="password"] {
+  flex: 1;
+  min-width: 0;
+  padding-right: 40px;
+}
+.input-clear {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.input-clear:hover { color: var(--text); }
+.input-clear.visible { display: flex; }
+
+/* ── fs-custom-input clear: inline sibling in flex bar ── */
+#fs-custom-clear {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: none;
+  border: 1px solid var(--border-ui);
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  font-family: 'DM Mono', monospace;
+  transition: color 0.15s, border-color 0.15s;
+}
+#fs-custom-clear:hover { color: var(--text); border-color: var(--muted); }
+#fs-custom-clear.visible { display: flex; }
