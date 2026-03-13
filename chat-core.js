@@ -11,6 +11,8 @@ const VLENGTH = {
 // ── SPEECH STATE ──
 let speakingCard = null;
 let elAudio = null;
+let elAudioCtx = null;
+let elSpeakToken = 0;  // incremented on each call to cancel in-flight requests
 
 // ── HELPERS ──
 function x(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -91,6 +93,11 @@ function speakBrowser(text, card) {
 
 async function speakElevenLabs(text, key, voiceId, card, onError) {
   if (elAudio) { elAudio.pause(); elAudio = null; }
+  const token = ++elSpeakToken;
+  // Create/resume AudioContext before the fetch so Firefox's audio pipeline
+  // warms up during the network round-trip, avoiding start-of-audio cutoff
+  if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
+  if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
   try {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
@@ -101,15 +108,26 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
         voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: parseFloat(localStorage.getItem('el_speed') || '1.0') }
       })
     });
+    if (token !== elSpeakToken) return;  // superseded by a newer call
     if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    elAudio = new Audio(url);
-    elAudio.onended = elAudio.onerror = () => { URL.revokeObjectURL(url); elAudio = null; clearSpeak(card); };
-    elAudio.play();
+    const arrayBuffer = await r.arrayBuffer();
+    let audioBuffer;
+    try {
+      audioBuffer = await elAudioCtx.decodeAudioData(arrayBuffer);
+    } catch(decodeErr) {
+      throw new Error(`Audio decode failed: ${decodeErr.message || decodeErr}`);
+    }
+    if (token !== elSpeakToken) return;  // superseded while decoding
+    const source = elAudioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(elAudioCtx.destination);
+    source.start();
+    source.onended = () => { elAudio = null; clearSpeak(card); };
+    elAudio = { pause: () => { try { source.stop(); } catch(_) {} } };  // shim for stopSpeak()
   } catch(e) {
+    if (token !== elSpeakToken) return;  // superseded; don't surface stale error
     clearSpeak(card);
-    console.error('ElevenLabs error:', e.message);
+    console.error('ElevenLabs error:', e);
     if (onError) onError(e.message);
   }
 }
