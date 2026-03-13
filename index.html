@@ -129,6 +129,14 @@
             <option value="">— select a voice —</option>
           </select>
         </div>
+        <div class="voice-row" id="speed-row">
+          <label>speed</label>
+          <div class="speed-stepper">
+            <button class="spill" onclick="stepElSpeed(-1)" aria-label="decrease speed">−</button>
+            <span id="el-speed-label" aria-live="polite">1.0×</span>
+            <button class="spill" onclick="stepElSpeed(1)" aria-label="increase speed">+</button>
+          </div>
+        </div>
         <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
       </div>
 
@@ -211,6 +219,10 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('el-key-input').addEventListener('blur', () => {
     if (document.getElementById('el-key-input').value.trim()) loadVoices();
   });
+
+  // ElevenLabs speed
+  const savedSpeed = localStorage.getItem('el_speed') || '1.0';
+  document.getElementById('el-speed-label').textContent = parseFloat(savedSpeed).toFixed(2) + '×';
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
@@ -361,6 +373,17 @@ function populateBrowserVoices() {
 
 function saveBrowserVoice() {
   localStorage.setItem('browser_voice', document.getElementById('browser-voice-select').value);
+}
+
+// ── ELEVENLABS SPEED ──
+const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
+function stepElSpeed(dir) {
+  const current = parseFloat(localStorage.getItem('el_speed') || '1.0');
+  const idx = EL_SPEED_STEPS.findIndex(s => Math.abs(s - current) < 0.001);
+  const next = EL_SPEED_STEPS[Math.max(0, Math.min(EL_SPEED_STEPS.length - 1, (idx === -1 ? 6 : idx) + dir))];
+  const val = next.toFixed(2);
+  localStorage.setItem('el_speed', val);
+  document.getElementById('el-speed-label').textContent = val + '×';
 }
 
 // ── START GENERATING → navigate to chat page ──

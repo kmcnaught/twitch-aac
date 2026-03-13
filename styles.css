@@ -472,6 +472,8 @@
   .voice-status.ok { color: var(--success); }
   .voice-status.err { color: var(--accent2); }
 
+  .speed-stepper { display: flex; align-items: center; gap: 10px; }
+  .speed-stepper #el-speed-label { min-width: 3.5ch; text-align: center; font-family: 'DM Mono', monospace; font-size: 15px; }
   .gender-pills { display: flex; gap: 7px; }
   .gpill {
     background: var(--bg); border: 1px solid var(--border-ui); color: var(--muted);
