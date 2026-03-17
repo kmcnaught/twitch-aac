@@ -512,6 +512,15 @@ function showPhrasesPanel(which) {
 }
 
 // ── PHRASES GRID ──
+function makeRowLabel(text, row, rowSpan) {
+  const el = document.createElement('div');
+  el.className = 'phrase-row-label';
+  el.textContent = text;
+  el.style.gridColumn = '1';
+  el.style.gridRow = rowSpan > 1 ? `${row} / span ${rowSpan}` : String(row);
+  return el;
+}
+
 function renderPhrasesGrid() {
   const grid = document.getElementById('phrases-grid');
   if (!grid) return;
@@ -519,18 +528,20 @@ function renderPhrasesGrid() {
   const phrases = loadPhrases();
 
   // Row 1: starred
+  grid.appendChild(makeRowLabel('starred', 1));
   const starred = phrases.filter(p => p.starred);
   for (let i = 0; i < 4; i++) {
     const p = starred[i];
     if (p) {
       const ph = p.phrase;
-      grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'starred'], () => speak(ph, null)));
+      grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'starred'], ph));
     } else {
       grid.appendChild(makeEmptyCell());
     }
   }
 
   // Row 2: LLM suggested
+  grid.appendChild(makeRowLabel('suggested', 2));
   for (let i = 0; i < 4; i++) {
     if (suggestedPhraseIds === null) {
       grid.appendChild(makeLoadingCell());
@@ -539,7 +550,7 @@ function renderPhrasesGrid() {
       const p = id ? phrases.find(ph => ph.id === id) : null;
       if (p) {
         const ph = p.phrase;
-        grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'suggested'], () => speak(ph, null)));
+        grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'suggested'], ph));
       } else {
         grid.appendChild(makeEmptyCell());
       }
@@ -547,12 +558,13 @@ function renderPhrasesGrid() {
   }
 
   // Rows 3–4: tag buttons
+  grid.appendChild(makeRowLabel('all phrases', 3, 2));
   const tags = getPhraseTags(phrases);
   if (tags.length === 0 && starred.length === 0) {
     // No phrases at all — show hint spanning rows 3–4
     const hint = document.createElement('div');
     hint.className = 'phrase-cell empty phrases-empty-hint';
-    hint.style.cssText = 'grid-column:1/-1;grid-row:3/5;opacity:1;pointer-events:none;border-style:dashed;flex-direction:column;gap:6px';
+    hint.style.cssText = 'grid-column:2/-1;grid-row:3/5;opacity:1;pointer-events:none;border-style:dashed;flex-direction:column;gap:6px';
     hint.innerHTML = '<span style="font-size:15px;color:var(--muted)">no phrases yet</span><span style="font-size:13px;color:var(--muted);opacity:0.7">add one with ✎</span>';
     grid.appendChild(hint);
   } else if (tags.length === 0) {
@@ -575,11 +587,16 @@ function renderPhrasesGrid() {
   }
 }
 
-function makePhraseCellEl(label, classes, onclick) {
-  const el = document.createElement('button');
-  el.className = classes.join(' ');
-  el.textContent = label;
-  el.onclick = onclick;
+function makePhraseCellEl(label, classes, phraseText) {
+  const el = document.createElement('div');
+  el.className = [...classes, 'speakable'].join(' ');
+  el.innerHTML = `<span class="pc-label">${x(label)}</span>
+    <div class="pc-btns">
+      <button class="pc-speak">🔊</button>
+      <button class="pc-stop">■</button>
+    </div>`;
+  el.querySelector('.pc-speak').onclick = () => speak(phraseText, el);
+  el.querySelector('.pc-stop').onclick  = () => stopSpeak();
   return el;
 }
 
@@ -600,7 +617,7 @@ function makeTagCellEl(tag, phrases) {
   const count = phrases.filter(p => (p.tag || 'misc') === tag).length;
   const el = document.createElement('button');
   el.className = 'phrase-cell tag-btn';
-  el.innerHTML = `<span>${x(tag)}</span><span style="font-size:calc(var(--fs-font-size) - 4px);color:var(--muted);display:block">${count}</span>`;
+  el.innerHTML = `<span>${x(tag)}</span><span style="font-size:calc(var(--fs-font-size) - 3px);color:var(--muted)">(${count} phrase${count !== 1 ? 's' : ''})</span>`;
   el.onclick = () => openTagView(tag);
   return el;
 }
@@ -656,7 +673,7 @@ function renderTagGrid() {
       const ph = p.phrase;
       grid.appendChild(makePhraseCellEl(p.label || p.phrase,
         ['phrase-cell', p.starred ? 'starred' : ''].filter(Boolean),
-        () => speak(ph, null)));
+        ph));
     } else {
       grid.appendChild(makeEmptyCell());
     }

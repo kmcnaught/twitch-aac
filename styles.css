@@ -608,9 +608,9 @@
 .phrases-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .phrases-icon-btn.active { border-color: var(--accent2); color: var(--accent2); }
 
-#phrases-grid, #phrases-tag-grid {
+#phrases-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 18px repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
   gap: 8px; padding: 12px; flex: 1; min-height: 0;
 }
@@ -618,18 +618,61 @@
 #phrases-tag-view {
   display: none; flex: 1; flex-direction: column; min-height: 0;
 }
-#phrases-tag-grid { grid-template-rows: repeat(4, 1fr); }
+
+#phrases-tag-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 8px; padding: 12px; flex: 1; min-height: 0;
+}
+
+.phrase-row-label {
+  writing-mode: vertical-rl;
+  font-size: 13px; color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; letter-spacing: 0.06em; white-space: nowrap;
+}
 
 .phrase-cell {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   cursor: pointer; font-family: 'DM Mono', monospace; font-size: var(--fs-font-size);
-  color: var(--text); padding: 6px 8px; display: flex; flex-direction: column;
+  color: var(--text); padding: 8px 10px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center;
   line-height: 1.3; overflow: hidden; word-break: break-word;
   transition: border-color 0.15s, background 0.15s; min-height: 0;
 }
-.phrase-cell:not(.empty):not(.loading):active { transform: scale(0.96); }
-.phrase-cell:not(.empty):not(.loading):hover { border-color: var(--accent); }
+.phrase-cell:not(.empty):not(.loading):not(.speakable):active { transform: scale(0.96); }
+.phrase-cell:not(.empty):not(.loading):not(.speakable):hover { border-color: var(--accent); }
+.phrase-cell.speaking { border-color: var(--accent2); background: var(--card-speaking-bg); }
+
+/* Speakable phrase cells: horizontal layout matching .fs-card */
+.phrase-cell.speakable {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: 8px; cursor: default; padding: 8px 10px;
+}
+.pc-label {
+  flex: 1; text-align: center; overflow: hidden; line-height: 1.4;
+}
+.pc-btns { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.pc-speak, .pc-stop {
+  width: 48px; height: 48px; border-radius: 11px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; flex-shrink: 0; padding: 0;
+  transition: transform 0.12s;
+}
+.pc-speak { background: var(--accent); }
+.pc-speak:active { transform: scale(0.88); }
+.pc-stop { background: var(--accent2); display: none; }
+.pc-stop:active { transform: scale(0.88); }
+.phrase-cell.speaking .pc-speak { display: none; }
+.phrase-cell.speaking .pc-stop { display: flex; animation: pulse 0.6s infinite alternate; }
+
+/* Tag cells: column, both spans grouped centrally */
+.phrase-cell.tag-btn {
+  color: var(--muted); border-style: dashed;
+  flex-direction: column; justify-content: center; gap: 2px;
+}
+.phrase-cell.tag-btn:hover { border-style: solid; color: var(--text); }
 
 .phrase-cell.starred {
   border-color: var(--accent);
@@ -639,8 +682,6 @@
   border-color: var(--accent2);
   background: rgba(255, 106, 155, 0.08);
 }
-.phrase-cell.tag-btn { color: var(--muted); border-style: dashed; }
-.phrase-cell.tag-btn:hover { border-style: solid; color: var(--text); }
 
 .phrase-cell.empty {
   border-style: dashed; opacity: 0.2; cursor: default; pointer-events: none;
