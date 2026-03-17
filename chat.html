@@ -6,6 +6,7 @@
 <title>StreamAAC · Chat</title>
 <link rel="stylesheet" href="styles.css">
 <script src="chat-core.js" defer></script>
+<script src="sample-phrases.js"></script>
 </head>
 <body>
 
@@ -25,6 +26,7 @@
       <button id="fs-font-down" title="Decrease font size">A<sup>−</sup></button>
       <button id="fs-font-up" title="Increase font size">A<sup>+</sup></button>
     </div>
+    <button class="btn-exit-fs" id="fs-phrases-btn" onclick="togglePhrasesView()">phrases</button>
     <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
   </div>
 
@@ -34,6 +36,42 @@
         <div id="fs-empty-state">
           <button id="fs-suggest-prominent" onclick="gen()">suggest</button>
           <div class="fs-empty-hint">hit suggest to generate responses</div>
+        </div>
+      </div>
+      <div id="phrases-main">
+        <div id="phrases-header">
+          <span>phrases</span>
+          <div style="display:flex;gap:8px">
+            <button class="phrases-icon-btn" onclick="renderPhrasesGrid()" title="Refresh">↻</button>
+            <button class="phrases-icon-btn" id="phrases-edit-btn" onclick="togglePhraseEditor()" title="Manage phrases">✎</button>
+          </div>
+        </div>
+        <div id="phrases-grid"></div>
+        <div id="phrases-tag-view">
+          <div id="phrases-tag-header">
+            <button class="phrases-icon-btn" onclick="closeTagView()">← back</button>
+            <span id="phrases-tag-name"></span>
+            <span id="phrases-tag-page-info"></span>
+          </div>
+          <div id="phrases-tag-grid"></div>
+        </div>
+        <div id="phrases-editor">
+          <div id="phrases-editor-header">
+            <span>manage phrases</span>
+          </div>
+          <div id="phrases-add-form">
+            <datalist id="phrase-tag-datalist"></datalist>
+            <input type="text" id="phrase-tag-input" placeholder="tag" list="phrase-tag-datalist" autocomplete="off">
+            <input type="text" id="phrase-label-input" placeholder="label (optional)" autocomplete="off">
+            <input type="text" id="phrase-phrase-input" placeholder="phrase text…" autocomplete="off">
+            <button onclick="addPhrase()">+ add</button>
+          </div>
+          <div id="phrases-io-bar">
+            <button onclick="exportPhrases()">↓ export .txt</button>
+            <input type="file" id="phrases-import-input" accept=".txt" style="display:none" onchange="importPhrases(event)">
+            <button onclick="document.getElementById('phrases-import-input').click()">↑ import .txt</button>
+          </div>
+          <div id="phrases-list"></div>
         </div>
       </div>
       <div id="fs-custom-bar">
@@ -98,6 +136,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (ch) connect(ch);
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
+  seedPhrasesIfEmpty();
 });
 
 // ── THEME ──
@@ -408,6 +447,453 @@ function speakCustomText() {
   const text = document.getElementById('fs-custom-input').value.trim();
   if (!text) return;
   speak(text, document.getElementById('fs-custom-bar'));
+}
+
+// ── PHRASES STATE ──
+let phrasesViewActive = false;
+let phrasesTagPage = 0;
+let tagViewTag = null;
+let tagViewPage = 0;
+let suggestedPhraseIds = null; // null = loading, [] = empty, [ids] = results
+let phraseEditorOpen = false;
+let phrasesSuggestToken = 0;
+
+// ── PHRASES DATA LAYER ──
+function seedPhrasesIfEmpty() {
+  if (localStorage.getItem('stored_phrases') !== null) return;
+  savePhrases((typeof SAMPLE_PHRASES !== 'undefined' ? SAMPLE_PHRASES : [])
+    .map(p => ({ id: generateId(), ...p })));
+}
+
+function loadPhrases() {
+  try { return JSON.parse(localStorage.getItem('stored_phrases') || '[]'); }
+  catch(_) { return []; }
+}
+
+function savePhrases(arr) {
+  localStorage.setItem('stored_phrases', JSON.stringify(arr));
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function getPhraseTags(phrases) {
+  const seen = new Set(), tags = [];
+  for (const p of phrases) {
+    const t = p.tag || 'misc';
+    if (!seen.has(t)) { seen.add(t); tags.push(t); }
+  }
+  return tags;
+}
+
+// ── PHRASES VIEW TOGGLE ──
+function togglePhrasesView() {
+  phrasesViewActive = !phrasesViewActive;
+  document.getElementById('fs-phrases-btn').classList.toggle('active', phrasesViewActive);
+  document.getElementById('fs-responses').style.display = phrasesViewActive ? 'none' : '';
+  document.getElementById('fs-custom-bar').style.display = phrasesViewActive ? 'none' : '';
+  document.getElementById('phrases-main').style.display = phrasesViewActive ? 'flex' : 'none';
+  if (phrasesViewActive) {
+    suggestedPhraseIds = null;
+    phraseEditorOpen = false;
+    phrasesTagPage = 0;
+    showPhrasesPanel('grid');
+    renderPhrasesGrid();
+    loadSuggestedPhrases();
+  }
+}
+
+function showPhrasesPanel(which) {
+  document.getElementById('phrases-grid').style.display = which === 'grid' ? 'grid' : 'none';
+  document.getElementById('phrases-tag-view').style.display = which === 'tag' ? 'flex' : 'none';
+  document.getElementById('phrases-editor').style.display = which === 'editor' ? 'flex' : 'none';
+  document.getElementById('phrases-edit-btn').classList.toggle('active', which === 'editor');
+}
+
+// ── PHRASES GRID ──
+function renderPhrasesGrid() {
+  const grid = document.getElementById('phrases-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const phrases = loadPhrases();
+
+  // Row 1: starred
+  const starred = phrases.filter(p => p.starred);
+  for (let i = 0; i < 4; i++) {
+    const p = starred[i];
+    if (p) {
+      const ph = p.phrase;
+      grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'starred'], () => speak(ph, null)));
+    } else {
+      grid.appendChild(makeEmptyCell());
+    }
+  }
+
+  // Row 2: LLM suggested
+  for (let i = 0; i < 4; i++) {
+    if (suggestedPhraseIds === null) {
+      grid.appendChild(makeLoadingCell());
+    } else {
+      const id = suggestedPhraseIds[i];
+      const p = id ? phrases.find(ph => ph.id === id) : null;
+      if (p) {
+        const ph = p.phrase;
+        grid.appendChild(makePhraseCellEl(p.label || p.phrase, ['phrase-cell', 'suggested'], () => speak(ph, null)));
+      } else {
+        grid.appendChild(makeEmptyCell());
+      }
+    }
+  }
+
+  // Rows 3–4: tag buttons
+  const tags = getPhraseTags(phrases);
+  if (tags.length === 0 && starred.length === 0) {
+    // No phrases at all — show hint spanning rows 3–4
+    const hint = document.createElement('div');
+    hint.className = 'phrase-cell empty phrases-empty-hint';
+    hint.style.cssText = 'grid-column:1/-1;grid-row:3/5;opacity:1;pointer-events:none;border-style:dashed;flex-direction:column;gap:6px';
+    hint.innerHTML = '<span style="font-size:15px;color:var(--muted)">no phrases yet</span><span style="font-size:13px;color:var(--muted);opacity:0.7">add one with ✎</span>';
+    grid.appendChild(hint);
+  } else if (tags.length === 0) {
+    for (let i = 0; i < 8; i++) grid.appendChild(makeEmptyCell());
+  } else if (tags.length <= 8) {
+    for (let i = 0; i < 8; i++) {
+      grid.appendChild(i < tags.length ? makeTagCellEl(tags[i], phrases) : makeEmptyCell());
+    }
+  } else if (phrasesTagPage === 0) {
+    tags.slice(0, 7).forEach(t => grid.appendChild(makeTagCellEl(t, phrases)));
+    grid.appendChild(makeNavCell('›', () => { phrasesTagPage++; renderPhrasesGrid(); }));
+  } else {
+    const offset = 7 + (phrasesTagPage - 1) * 6;
+    const hasNext = offset + 6 < tags.length;
+    grid.appendChild(makeNavCell('‹', () => { phrasesTagPage--; renderPhrasesGrid(); }));
+    const pageTags = tags.slice(offset, hasNext ? offset + 6 : tags.length);
+    pageTags.forEach(t => grid.appendChild(makeTagCellEl(t, phrases)));
+    for (let i = pageTags.length; i < (hasNext ? 6 : 7); i++) grid.appendChild(makeEmptyCell());
+    if (hasNext) grid.appendChild(makeNavCell('›', () => { phrasesTagPage++; renderPhrasesGrid(); }));
+  }
+}
+
+function makePhraseCellEl(label, classes, onclick) {
+  const el = document.createElement('button');
+  el.className = classes.join(' ');
+  el.textContent = label;
+  el.onclick = onclick;
+  return el;
+}
+
+function makeEmptyCell() {
+  const el = document.createElement('div');
+  el.className = 'phrase-cell empty';
+  return el;
+}
+
+function makeLoadingCell() {
+  const el = document.createElement('div');
+  el.className = 'phrase-cell loading';
+  el.textContent = '…';
+  return el;
+}
+
+function makeTagCellEl(tag, phrases) {
+  const count = phrases.filter(p => (p.tag || 'misc') === tag).length;
+  const el = document.createElement('button');
+  el.className = 'phrase-cell tag-btn';
+  el.innerHTML = `<span>${x(tag)}</span><span style="font-size:calc(var(--fs-font-size) - 4px);color:var(--muted);display:block">${count}</span>`;
+  el.onclick = () => openTagView(tag);
+  return el;
+}
+
+function makeNavCell(symbol, onclick) {
+  const el = document.createElement('button');
+  el.className = 'phrase-cell next-page';
+  el.textContent = symbol;
+  el.onclick = onclick;
+  return el;
+}
+
+// ── TAG SUB-VIEW ──
+function openTagView(tag) {
+  tagViewTag = tag;
+  tagViewPage = 0;
+  document.getElementById('phrases-tag-name').textContent = tag;
+  showPhrasesPanel('tag');
+  renderTagGrid();
+}
+
+function closeTagView() {
+  tagViewTag = null;
+  showPhrasesPanel('grid');
+}
+
+function renderTagGrid() {
+  const grid = document.getElementById('phrases-tag-grid');
+  grid.innerHTML = '';
+  const phrases = loadPhrases()
+    .filter(p => (p.tag || 'misc') === tagViewTag)
+    .sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+
+  const total = phrases.length;
+  const pageSize = 14;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = phrases.slice(tagViewPage * pageSize, (tagViewPage + 1) * pageSize);
+
+  document.getElementById('phrases-tag-page-info').textContent =
+    totalPages > 1 ? `${tagViewPage + 1}/${totalPages}` : '';
+
+  // Cell 0: back
+  const back = document.createElement('button');
+  back.className = 'phrase-cell tag-btn';
+  back.textContent = '← back';
+  back.onclick = closeTagView;
+  grid.appendChild(back);
+
+  // Cells 1–14: phrases
+  for (let i = 0; i < 14; i++) {
+    const p = page[i];
+    if (p) {
+      const ph = p.phrase;
+      grid.appendChild(makePhraseCellEl(p.label || p.phrase,
+        ['phrase-cell', p.starred ? 'starred' : ''].filter(Boolean),
+        () => speak(ph, null)));
+    } else {
+      grid.appendChild(makeEmptyCell());
+    }
+  }
+
+  // Cell 15: next/prev or empty
+  if (totalPages > 1 && tagViewPage < totalPages - 1) {
+    grid.appendChild(makeNavCell('›', () => { tagViewPage++; renderTagGrid(); }));
+  } else if (tagViewPage > 0) {
+    grid.appendChild(makeNavCell('‹', () => { tagViewPage--; renderTagGrid(); }));
+  } else {
+    grid.appendChild(makeEmptyCell());
+  }
+}
+
+// ── LLM PHRASE SUGGESTIONS ──
+async function loadSuggestedPhrases() {
+  const token = ++phrasesSuggestToken;
+  const phrases = loadPhrases();
+  if (!phrases.length) {
+    if (token === phrasesSuggestToken) { suggestedPhraseIds = []; renderPhrasesGrid(); }
+    return;
+  }
+  const chat = chatLog.filter(m => !m.excluded).slice(-10)
+    .map(m => `${m.user}: ${m.text}`).join('\n') || '(no recent chat)';
+  const phraseList = phrases.map(p => `${p.id}|${p.tag || 'misc'}|${p.label || p.phrase}`).join('\n');
+  const prompt = `You help a Twitch streamer using AAC pick contextually relevant pre-written phrases.
+
+Recent chat:
+${chat}
+
+Available phrases (id|tag|label):
+${phraseList}
+
+Pick the 4 most contextually relevant phrase IDs. Return ONLY valid JSON: {"ids":["id1","id2","id3","id4"]}`;
+
+  try {
+    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (token !== phrasesSuggestToken) return;
+    const d = await r.json();
+    const raw = d.content?.[0]?.text ?? '';
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) {
+      const ids = JSON.parse(m[0]).ids || [];
+      if (token === phrasesSuggestToken) { suggestedPhraseIds = ids.slice(0, 4); renderPhrasesGrid(); }
+    }
+  } catch(_) {
+    if (token === phrasesSuggestToken) { suggestedPhraseIds = []; renderPhrasesGrid(); }
+  }
+}
+
+// ── PHRASE EDITOR ──
+function togglePhraseEditor() {
+  if (phraseEditorOpen) {
+    phraseEditorOpen = false;
+    showPhrasesPanel('grid');
+  } else {
+    phraseEditorOpen = true;
+    tagViewTag = null;
+    showPhrasesPanel('editor');
+    renderPhraseEditor();
+    refreshTagDatalist();
+  }
+}
+
+function renderPhraseEditor() {
+  const list = document.getElementById('phrases-list');
+  list.innerHTML = '';
+  const phrases = loadPhrases();
+  const tags = getPhraseTags(phrases);
+  if (!phrases.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:12px 0">no phrases yet — add one above</div>';
+    return;
+  }
+  tags.forEach(tag => {
+    const group = phrases.filter(p => (p.tag || 'misc') === tag);
+    const lbl = document.createElement('div');
+    lbl.className = 'phrase-group-label';
+    lbl.textContent = `${tag} (${group.length} phrase${group.length !== 1 ? 's' : ''})`;
+    list.appendChild(lbl);
+    group.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'phrase-row';
+      row.innerHTML = `
+        <input class="pr-tag" value="${x(p.tag || 'misc')}" list="phrase-tag-datalist"
+          onchange="updatePhraseField('${p.id}','tag',this.value)" autocomplete="off">
+        <input class="pr-label" value="${x(p.label || '')}" placeholder="label"
+          onchange="updatePhraseField('${p.id}','label',this.value)" autocomplete="off">
+        <input class="pr-phrase" value="${x(p.phrase)}" placeholder="phrase"
+          onchange="updatePhraseField('${p.id}','phrase',this.value)" autocomplete="off">
+        <button class="pr-star${p.starred ? ' starred' : ''}" onclick="togglePhraseStar('${p.id}')" title="Star">★</button>
+        <button class="pr-del" onclick="deletePhrase('${p.id}')" title="Delete">✕</button>`;
+      list.appendChild(row);
+    });
+  });
+}
+
+function addPhrase() {
+  const tagIn = document.getElementById('phrase-tag-input').value.trim() || 'misc';
+  const labelIn = document.getElementById('phrase-label-input').value.trim();
+  const phraseIn = document.getElementById('phrase-phrase-input').value.trim();
+  if (!phraseIn) return;
+  const phrases = loadPhrases();
+  phrases.push({ id: generateId(), tag: tagIn, label: labelIn || phraseIn, phrase: phraseIn, starred: false });
+  savePhrases(phrases);
+  document.getElementById('phrase-tag-input').value = '';
+  document.getElementById('phrase-label-input').value = '';
+  document.getElementById('phrase-phrase-input').value = '';
+  renderPhraseEditor();
+  refreshTagDatalist();
+  if (!phraseEditorOpen) renderPhrasesGrid();
+}
+
+function updatePhraseField(id, field, value) {
+  const phrases = loadPhrases();
+  const p = phrases.find(ph => ph.id === id);
+  if (!p) return;
+  if (field === 'tag') p.tag = value.trim() || 'misc';
+  else if (field === 'label') p.label = value.trim();
+  else if (field === 'phrase') p.phrase = value.trim();
+  savePhrases(phrases);
+  if (field === 'tag') { renderPhraseEditor(); refreshTagDatalist(); }
+}
+
+function togglePhraseStar(id) {
+  const phrases = loadPhrases();
+  const p = phrases.find(ph => ph.id === id);
+  if (!p) return;
+  p.starred = !p.starred;
+  savePhrases(phrases);
+  renderPhraseEditor();
+  renderPhrasesGrid();
+}
+
+function deletePhrase(id) {
+  const phrases = loadPhrases().filter(p => p.id !== id);
+  savePhrases(phrases);
+  renderPhraseEditor();
+  renderPhrasesGrid();
+}
+
+function refreshTagDatalist() {
+  const dl = document.getElementById('phrase-tag-datalist');
+  if (!dl) return;
+  dl.innerHTML = '';
+  getPhraseTags(loadPhrases()).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    dl.appendChild(opt);
+  });
+}
+
+// ── PHRASES EXPORT / IMPORT ──
+function formatPhrasesTxt(phrases) {
+  const today = new Date().toISOString().slice(0, 10);
+  let out = `# StreamAAC phrases — exported ${today}\n# Format: [tag], then  * label | phrase  (* = favourite)\n\n`;
+  const tags = getPhraseTags(phrases);
+  tags.forEach(tag => {
+    out += `[${tag}]\n`;
+    phrases.filter(p => (p.tag || 'misc') === tag).forEach(p => {
+      out += `${p.starred ? '* ' : ''}${p.label || p.phrase} | ${p.phrase}\n`;
+    });
+    out += '\n';
+  });
+  return out.trimEnd();
+}
+
+function exportPhrases() {
+  const phrases = loadPhrases();
+  if (!phrases.length) { alert('No phrases to export.'); return; }
+  const txt = formatPhrasesTxt(phrases);
+  const blob = new Blob([txt], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const today = new Date().toISOString().slice(0, 10);
+  a.download = `streamaac-phrases-${today}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function parsePhrasesTxt(text) {
+  const parsed = [];
+  let currentTag = 'misc';
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const tagMatch = line.match(/^\[(.+)\]$/);
+    if (tagMatch) { currentTag = tagMatch[1].trim() || 'misc'; continue; }
+    const starred = line.startsWith('* ');
+    const content = starred ? line.slice(2).trim() : line;
+    const sep = content.includes(' | ') ? ' | ' : '|';
+    const idx = content.indexOf(sep);
+    let label, phrase;
+    if (idx !== -1) {
+      label = content.slice(0, idx).trim();
+      phrase = content.slice(idx + sep.length).trim();
+    } else {
+      label = content;
+      phrase = content;
+    }
+    if (phrase) parsed.push({ tag: currentTag, label: label || phrase, phrase, starred });
+  }
+  return parsed;
+}
+
+function importPhrases(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const incoming = parsePhrasesTxt(e.target.result);
+    const existing = loadPhrases();
+    const existingPhrases = new Set(existing.map(p => p.phrase));
+    let added = 0;
+    incoming.forEach(p => {
+      if (!existingPhrases.has(p.phrase)) {
+        existing.push({ id: generateId(), ...p });
+        existingPhrases.add(p.phrase);
+        added++;
+      }
+    });
+    savePhrases(existing);
+    renderPhraseEditor();
+    refreshTagDatalist();
+    renderPhrasesGrid();
+    alert(`Imported ${added} phrase${added !== 1 ? 's' : ''} (${incoming.length - added} duplicate${incoming.length - added !== 1 ? 's' : ''} skipped).`);
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 // ── GENERATE FROM KEYWORDS ──
