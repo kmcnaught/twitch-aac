@@ -388,7 +388,7 @@ function addMsg(user, rawText, emotesTag, source) {
   const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
   const col = cols[user.charCodeAt(0) % cols.length];
 
-  const sourceBadge = source === 'youtube' ? '<span class="src-badge src-yt">YT</span>' : '';
+  const sourceBadge = source === 'youtube' ? '<span class="src-badge src-yt">YT</span>' : '<span class="src-badge src-tw">TW</span>';
 
   const fsEl = document.createElement('div');
   fsEl.className = 'fs-chat-msg' + (excluded ? ' excluded' : '');

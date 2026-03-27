@@ -152,6 +152,7 @@
     margin-right: 5px; line-height: 1.6;
   }
   .src-yt { background: #ff0000; color: #fff; }
+  .src-tw { background: #9146ff; color: #fff; }
 
   #fs-yt-status {
     display: flex; align-items: center; gap: 5px; flex-shrink: 0;
