@@ -17,6 +17,7 @@
     <button class="btn-back" onclick="goBack()">← back</button>
     <div id="fs-status-dot"></div>
     <div id="fs-status-label">connecting…</div>
+    <span id="fs-yt-status" style="display:none"><span class="src-badge src-yt">YT</span><span id="fs-yt-label">–</span></span>
     <div class="fs-verbosity" style="margin-left:12px">
       <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
       <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
@@ -113,6 +114,9 @@ let theme = localStorage.getItem('theme') || 'dark';
 let bufferedFsMsgs = [];
 const MAX_MSG = 40;
 
+// ── YOUTUBE STATE ──
+let ytPollTimer = null, ytLiveChatId = null, ytNextPageToken = null, ytConnected = false;
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', () => {
   applyTheme();
@@ -135,6 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Auto-connect
   const ch = localStorage.getItem('twitch_channel');
   if (ch) connect(ch);
+  connectYouTube();
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
   seedPhrasesIfEmpty();
@@ -169,6 +174,7 @@ function setFV(btn) {
 // ── NAVIGATION ──
 function goBack() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  clearTimeout(ytPollTimer);
   window.location.href = 'index.html';
 }
 
@@ -185,6 +191,7 @@ function setFsSuggestEnabled(enabled) {
   const prominent = document.getElementById('fs-suggest-prominent');
   if (prominent) prominent.disabled = !enabled;
 }
+function updateSuggestEnabled() { setFsSuggestEnabled(isConnected || ytConnected); }
 
 // ── CONNECT ──
 function connect(rawCh) {
@@ -225,12 +232,12 @@ function connect(rawCh) {
       isConnected = true;
       everConnected = true;
       setStatus('connected', '#' + ch);
-      setFsSuggestEnabled(true);
+      updateSuggestEnabled();
       clearEmptyMsg();
       if (wasReconnect) addChatDivider('— reconnected —');
     }
     const msg = parseIrcMsg(raw);
-    if (msg) addMsg(msg.user, msg.text, msg.emotesTag);
+    if (msg) addMsg(msg.user, msg.text, msg.emotesTag, 'twitch');
   };
   ws.onerror = () => {
     isConnected = false;
@@ -242,7 +249,7 @@ function connect(rawCh) {
   ws.onclose = () => {
     if (ws !== sock) return;
     isConnected = false;
-    setFsSuggestEnabled(false);
+    updateSuggestEnabled();
     if (everConnected) {
       addChatDivider('— temporarily disconnected —');
       scheduleReconnect();
@@ -258,6 +265,100 @@ document.addEventListener('visibilitychange', () => {
     connect(currentChannel);
   }
 });
+
+// ── YOUTUBE CHAT ──
+function setYtStatus(cls, txt) {
+  const el = document.getElementById('fs-yt-status');
+  el.style.display = '';
+  el.className = cls;
+  document.getElementById('fs-yt-label').textContent = txt;
+}
+
+function extractYtVideoId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
+    if (u.pathname.startsWith('/live/')) return u.pathname.split('/')[2];
+    return u.searchParams.get('v');
+  } catch { return null; }
+}
+
+async function connectYouTube() {
+  const rawUrl = (localStorage.getItem('youtube_video_url') || '').trim();
+  if (!rawUrl) return;
+
+  const videoId = extractYtVideoId(rawUrl);
+  if (!videoId) {
+    setYtStatus('error', 'invalid URL');
+    return;
+  }
+
+  setYtStatus('connecting', 'connecting…');
+
+  try {
+    const res = await fetch(
+      `${PROXY_URL}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`
+    );
+    const data = await res.json();
+
+    if (data.error === 'no_live_stream') {
+      setYtStatus('', 'no live stream');
+      ytPollTimer = setTimeout(connectYouTube, 120000);
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || res.status);
+
+    ytLiveChatId = data.liveChatId;
+    ytNextPageToken = null;
+    pollYouTubeChat(true);
+
+  } catch (e) {
+    console.error('YouTube connect error:', e);
+    setYtStatus('error', 'error');
+    ytPollTimer = setTimeout(connectYouTube, 30000);
+  }
+}
+
+async function pollYouTubeChat(skipFirstBatch) {
+  if (!ytLiveChatId) return;
+
+  try {
+    const res = await fetch(`${PROXY_URL}/yt-chat/poll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ liveChatId: ytLiveChatId, pageToken: ytNextPageToken }),
+    });
+    const data = await res.json();
+
+    if (res.status === 403 || data.error === 'stream_ended') {
+      ytConnected = false; ytLiveChatId = null; ytNextPageToken = null;
+      setYtStatus('', 'stream ended');
+      updateSuggestEnabled();
+      ytPollTimer = setTimeout(connectYouTube, 120000);
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || res.status);
+
+    if (!skipFirstBatch) {
+      (data.messages || []).forEach(m => addMsg(m.author, m.text, null, 'youtube'));
+    }
+
+    if (!ytConnected) {
+      ytConnected = true;
+      setYtStatus('connected', 'live');
+      updateSuggestEnabled();
+      clearEmptyMsg();
+    }
+
+    ytNextPageToken = data.nextPageToken;
+    const pollMs = Math.max(data.pollingIntervalMillis || 5000, 3000);
+    ytPollTimer = setTimeout(pollYouTubeChat, pollMs);
+
+  } catch (e) {
+    console.error('YouTube poll error:', e);
+    ytPollTimer = setTimeout(() => pollYouTubeChat(false), 10000);
+  }
+}
 
 // ── CHAT DIVIDER ──
 function addChatDivider(text) {
@@ -276,19 +377,22 @@ function clearEmptyMsg() {
   if (fe) fe.remove();
 }
 
-function addMsg(user, rawText, emotesTag) {
+function addMsg(user, rawText, emotesTag, source) {
+  source = source || 'twitch';
   const llmText = replaceEmotes(rawText, emotesTag);
   const excluded = isExcluded(user, rawText);
-  const entry = { user, text: llmText, excluded };
+  const entry = { user, text: llmText, excluded, source };
   chatLog.push(entry);
   if (chatLog.length > MAX_MSG) chatLog.shift();
 
   const cols = ['#7c6aff','#ff6a9b','#4ade80','#fb923c','#60a5fa','#e879f9'];
   const col = cols[user.charCodeAt(0) % cols.length];
 
+  const sourceBadge = source === 'youtube' ? '<span class="src-badge src-yt">YT</span>' : '';
+
   const fsEl = document.createElement('div');
   fsEl.className = 'fs-chat-msg' + (excluded ? ' excluded' : '');
-  fsEl.innerHTML = `<span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${renderEmotes(rawText, emotesTag)}</span>`;
+  fsEl.innerHTML = `${sourceBadge}<span class="chat-user" style="color:${col}">${x(user)}</span><span class="chat-text">${renderEmotes(rawText, emotesTag)}</span>`;
   fsEl.addEventListener('click', () => {
     if (selectedMsg === entry) {
       clearSelection();

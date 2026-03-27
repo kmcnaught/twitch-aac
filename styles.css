@@ -146,6 +146,21 @@
   .chat-emote { height: 1.4em; vertical-align: middle; display: inline-block; }
   .empty-state { color: var(--muted); font-size: 15px; text-align: center; padding: 22px 0; }
 
+  .src-badge {
+    display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
+    padding: 1px 4px; border-radius: 3px; vertical-align: middle;
+    margin-right: 5px; line-height: 1.6;
+  }
+  .src-yt { background: #ff0000; color: #fff; }
+
+  #fs-yt-status {
+    display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+    font-size: 13px; color: var(--muted);
+  }
+  #fs-yt-status.connected { color: var(--success); }
+  #fs-yt-status.connecting { color: #facc15; }
+  #fs-yt-status.error { color: var(--accent2); }
+
   /* GEN BAR */
   #gen-bar {
     padding: 11px 19px; display: flex; gap: 11px;

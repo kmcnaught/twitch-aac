@@ -56,6 +56,13 @@
         </div>
       </div>
       <div class="row">
+        <label for="yt-channel-input">youtube live</label>
+        <div class="input-wrap">
+          <input type="text" id="yt-channel-input" placeholder="https://youtube.com/watch?v=... (optional)" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
+      </div>
+      <div class="row">
         <label for="game-select">game</label>
         <select id="game-select">
           <option value="">— not specified —</option>
@@ -214,6 +221,12 @@ window.addEventListener('DOMContentLoaded', () => {
     invalidateBotCache();
   });
 
+  const savedYtUrl = localStorage.getItem('youtube_video_url');
+  if (savedYtUrl) document.getElementById('yt-channel-input').value = savedYtUrl;
+  document.getElementById('yt-channel-input').addEventListener('change', () =>
+    localStorage.setItem('youtube_video_url', document.getElementById('yt-channel-input').value.trim()));
+
+
   // Game select
   const savedGame = localStorage.getItem('game') || '';
   if (savedGame) document.getElementById('game-select').value = savedGame;
@@ -278,7 +291,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
 
   // Clear buttons
-  ['channel-input','handle-input','persona-input','ctx-input','bots-input'].forEach(id => {
+  ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input'].forEach(id => {
     const inp = document.getElementById(id);
     initClearBtn(inp, inp.parentElement.querySelector('.input-clear'));
   });
@@ -422,7 +435,8 @@ function stepElSpeed(dir) {
 // ── START GENERATING → navigate to chat page ──
 function goToChat() {
   const ch = document.getElementById('channel-input').value.trim();
-  if (!ch) { document.getElementById('channel-input').focus(); return; }
+  const ytUrl = document.getElementById('yt-channel-input').value.trim();
+  if (!ch && !ytUrl) { document.getElementById('channel-input').focus(); return; }
   // Flush all fields to localStorage before navigating
   localStorage.setItem('twitch_channel', ch);
   localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim());
@@ -430,6 +444,7 @@ function goToChat() {
   localStorage.setItem('context', document.getElementById('ctx-input').value.trim());
   localStorage.setItem('ignored_bots', document.getElementById('bots-input').value.trim());
   invalidateBotCache();
+  localStorage.setItem('youtube_video_url', document.getElementById('yt-channel-input').value.trim());
   const gameVal = document.getElementById('game-select').value;
   localStorage.setItem('game', gameVal);
   localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
