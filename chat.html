@@ -297,7 +297,8 @@ async function connectYouTube() {
 
   try {
     const res = await fetch(
-      `${PROXY_URL}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`
+      `${PROXY_URL}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`,
+      { headers: { 'x-app': 'twitch-aac' } }
     );
     const data = await res.json();
 
@@ -325,7 +326,7 @@ async function pollYouTubeChat(skipFirstBatch) {
   try {
     const res = await fetch(`${PROXY_URL}/yt-chat/poll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({ liveChatId: ytLiveChatId, pageToken: ytNextPageToken }),
     });
     const data = await res.json();
@@ -491,7 +492,7 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
   try {
     const r = await fetch(`${PROXY_URL}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
@@ -818,7 +819,7 @@ Pick the 4 most contextually relevant phrase IDs. Return ONLY valid JSON: {"ids"
   try {
     const r = await fetch(`${PROXY_URL}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 256,
@@ -1058,7 +1059,7 @@ ${chat}${handle ? '\nStreamer handle: @'+handle : ''}${ctx ? '\nContext: '+ctx :
   try {
     const r = await fetch(`${PROXY_URL}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
