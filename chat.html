@@ -18,6 +18,7 @@
     <div id="fs-status-dot"></div>
     <div id="fs-status-label">connecting…</div>
     <span id="fs-yt-status" style="display:none"><span class="src-badge src-yt">YT</span><span id="fs-yt-label">–</span></span>
+    <span id="fs-sb-status" style="display:none"><span class="src-badge src-sb">SB</span><span id="fs-sb-label">–</span></span>
     <div class="fs-verbosity" style="margin-left:12px">
       <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
       <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
@@ -141,6 +142,13 @@ window.addEventListener('DOMContentLoaded', () => {
   if (ch) connect(ch);
   connectYouTube();
 
+  // Streamer.bot
+  if ((localStorage.getItem('streamerbot_host') || '').trim()) {
+    document.getElementById('fs-sb-status').style.display = '';
+    setSbStatus('connecting', 'connecting…');
+    connectStreamerbot();
+  }
+
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
   seedPhrasesIfEmpty();
 });
@@ -182,6 +190,13 @@ function goBack() {
 function setStatus(cls, txt) {
   document.getElementById('fs-status-dot').className = 'status-dot ' + cls;
   document.getElementById('fs-status-label').textContent = txt;
+}
+
+function setSbStatus(cls, txt) {
+  const el = document.getElementById('fs-sb-status');
+  if (!el) return;
+  el.className = cls;
+  document.getElementById('fs-sb-label').textContent = txt;
 }
 
 // ── SUGGEST BUTTONS ──
@@ -537,6 +552,8 @@ function speak(text, card) {
   flushBufferedFsMsgs();
   speakingCard = card;
   if (card) card.classList.add('speaking');
+
+  postToChat(text);
 
   const voiceId = localStorage.getItem('el_voice_id') || '';
   const elKey   = localStorage.getItem('el_key') || '';

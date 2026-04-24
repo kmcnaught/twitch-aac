@@ -143,6 +143,69 @@ function clearSpeak(card) {
   speakingCard = null;
 }
 
+// ── STREAMER.BOT ──
+let sbWs = null;
+let sbConnected = false;
+let _sbReqId = 0;
+const _sbPending = {};
+
+function connectStreamerbot() {
+  const raw = (localStorage.getItem('streamerbot_host') || '').trim();
+  if (!raw) return;
+
+  const colonIdx = raw.lastIndexOf(':');
+  const host = colonIdx > 0 ? raw.slice(0, colonIdx) : raw;
+  const port = colonIdx > 0 ? (parseInt(raw.slice(colonIdx + 1)) || 8080) : 8080;
+
+  if (sbWs) { try { sbWs.onclose = null; sbWs.close(); } catch(_) {} sbWs = null; }
+  sbConnected = false;
+
+  const sock = new WebSocket(`ws://${host}:${port}/`);
+  sbWs = sock;
+
+  sock.onmessage = (e) => {
+    let data;
+    try { data = JSON.parse(e.data); } catch(_) { return; }
+    if (data.type === 'Hello') {
+      sbConnected = true;
+      if (typeof setSbStatus === 'function') setSbStatus('connected', 'chat on');
+    }
+    if (data.id && _sbPending[data.id]) {
+      const { resolve, reject } = _sbPending[data.id];
+      delete _sbPending[data.id];
+      data.status === 'ok' ? resolve(data) : reject(new Error(data.error || 'failed'));
+    }
+  };
+  sock.onerror = () => {
+    sbConnected = false;
+    if (typeof setSbStatus === 'function') setSbStatus('error', 'error');
+  };
+  sock.onclose = () => {
+    if (sbWs !== sock) return;
+    sbConnected = false;
+    if (typeof setSbStatus === 'function') setSbStatus('', 'offline');
+  };
+}
+
+function _sbSend(req) {
+  return new Promise((resolve, reject) => {
+    if (!sbWs || sbWs.readyState !== WebSocket.OPEN) return reject(new Error('not connected'));
+    const id = 'sb-' + (++_sbReqId);
+    _sbPending[id] = { resolve, reject };
+    setTimeout(() => { if (_sbPending[id]) { delete _sbPending[id]; reject(new Error('timeout')); } }, 5000);
+    sbWs.send(JSON.stringify({ ...req, id }));
+  });
+}
+
+async function postToChat(text) {
+  if (!sbConnected || !sbWs) return;
+  try {
+    await _sbSend({ request: 'SendMessage', platform: 'twitch', bot: true, internal: false, message: text });
+  } catch(e) {
+    console.error('Streamer.bot SendMessage:', e.message);
+  }
+}
+
 // ── CLEAR BUTTONS ──
 function initClearBtn(inputEl, clearBtn, onClear) {
   if (!inputEl || !clearBtn) return;

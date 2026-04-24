@@ -153,14 +153,15 @@
   }
   .src-yt { background: #ff0000; color: #fff; }
   .src-tw { background: #9146ff; color: #fff; }
+  .src-sb { background: #ff7a00; color: #fff; }
 
-  #fs-yt-status {
+  #fs-yt-status, #fs-sb-status {
     display: flex; align-items: center; gap: 5px; flex-shrink: 0;
     font-size: 13px; color: var(--muted);
   }
-  #fs-yt-status.connected { color: var(--success); }
-  #fs-yt-status.connecting { color: #facc15; }
-  #fs-yt-status.error { color: var(--accent2); }
+  #fs-yt-status.connected, #fs-sb-status.connected { color: var(--success); }
+  #fs-yt-status.connecting, #fs-sb-status.connecting { color: #facc15; }
+  #fs-yt-status.error, #fs-sb-status.error { color: var(--accent2); }
 
   /* GEN BAR */
   #gen-bar {
