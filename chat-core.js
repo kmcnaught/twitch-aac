@@ -145,11 +145,10 @@ function clearSpeak(card) {
 
 // ── STREAMER.BOT ──
 let sbWs = null;
-let sbConnected = false;
 let _sbReqId = 0;
 const _sbPending = {};
 
-function connectStreamerbot() {
+function connectStreamerbot(onStatus) {
   const raw = (localStorage.getItem('streamerbot_host') || '').trim();
   if (!raw) return;
 
@@ -158,7 +157,6 @@ function connectStreamerbot() {
   const port = colonIdx > 0 ? (parseInt(raw.slice(colonIdx + 1)) || 8080) : 8080;
 
   if (sbWs) { try { sbWs.onclose = null; sbWs.close(); } catch(_) {} sbWs = null; }
-  sbConnected = false;
 
   const sock = new WebSocket(`ws://${host}:${port}/`);
   sbWs = sock;
@@ -167,8 +165,7 @@ function connectStreamerbot() {
     let data;
     try { data = JSON.parse(e.data); } catch(_) { return; }
     if (data.type === 'Hello') {
-      sbConnected = true;
-      if (typeof setSbStatus === 'function') setSbStatus('connected', 'chat on');
+      onStatus?.('connected', 'chat on');
     }
     if (data.id && _sbPending[data.id]) {
       const { resolve, reject } = _sbPending[data.id];
@@ -176,14 +173,14 @@ function connectStreamerbot() {
       data.status === 'ok' ? resolve(data) : reject(new Error(data.error || 'failed'));
     }
   };
-  sock.onerror = () => {
-    sbConnected = false;
-    if (typeof setSbStatus === 'function') setSbStatus('error', 'error');
-  };
+  sock.onerror = () => { /* onclose handles cleanup */ };
   sock.onclose = () => {
     if (sbWs !== sock) return;
-    sbConnected = false;
-    if (typeof setSbStatus === 'function') setSbStatus('', 'offline');
+    Object.values(_sbPending).forEach(({ reject }) => reject(new Error('disconnected')));
+    for (const k in _sbPending) delete _sbPending[k];
+    if (!(localStorage.getItem('streamerbot_host') || '').trim()) return;
+    onStatus?.('connecting', 'reconnecting…');
+    setTimeout(() => connectStreamerbot(onStatus), 4000);
   };
 }
 
@@ -198,7 +195,7 @@ function _sbSend(req) {
 }
 
 async function postToChat(text) {
-  if (!sbConnected || !sbWs) return;
+  if (!sbWs || sbWs.readyState !== WebSocket.OPEN) return;
   try {
     await _sbSend({ request: 'SendMessage', platform: 'twitch', bot: true, internal: false, message: text });
   } catch(e) {

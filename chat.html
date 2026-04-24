@@ -144,9 +144,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Streamer.bot
   if ((localStorage.getItem('streamerbot_host') || '').trim()) {
-    document.getElementById('fs-sb-status').style.display = '';
     setSbStatus('connecting', 'connecting…');
-    connectStreamerbot();
+    connectStreamerbot(setSbStatus);
   }
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
@@ -192,12 +191,17 @@ function setStatus(cls, txt) {
   document.getElementById('fs-status-label').textContent = txt;
 }
 
-function setSbStatus(cls, txt) {
-  const el = document.getElementById('fs-sb-status');
-  if (!el) return;
-  el.className = cls;
-  document.getElementById('fs-sb-label').textContent = txt;
+function makeStatusUpdater(wrapperId, labelId) {
+  return function(cls, txt) {
+    const el = document.getElementById(wrapperId);
+    if (!el) return;
+    el.style.display = '';
+    el.className = cls;
+    document.getElementById(labelId).textContent = txt;
+  };
 }
+
+const setSbStatus = makeStatusUpdater('fs-sb-status', 'fs-sb-label');
 
 // ── SUGGEST BUTTONS ──
 function setFsSuggestEnabled(enabled) {
@@ -275,19 +279,17 @@ function connect(rawCh) {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !isConnected && everConnected) {
+  if (document.hidden) return;
+  if (!isConnected && everConnected) {
     clearTimeout(reconnectTimer);
     connect(currentChannel);
   }
+  const sbHost = (localStorage.getItem('streamerbot_host') || '').trim();
+  if (sbHost && (!sbWs || sbWs.readyState !== WebSocket.OPEN)) connectStreamerbot(setSbStatus);
 });
 
 // ── YOUTUBE CHAT ──
-function setYtStatus(cls, txt) {
-  const el = document.getElementById('fs-yt-status');
-  el.style.display = '';
-  el.className = cls;
-  document.getElementById('fs-yt-label').textContent = txt;
-}
+const setYtStatus = makeStatusUpdater('fs-yt-status', 'fs-yt-label');
 
 function extractYtVideoId(url) {
   try {
