@@ -164,7 +164,7 @@ function connectStreamerbot(onStatus) {
   sock.onmessage = (e) => {
     let data;
     try { data = JSON.parse(e.data); } catch(_) { return; }
-    if (data.type === 'Hello') {
+    if (data.event?.type === 'Hello' || data.type === 'Hello') {
       onStatus?.('connected', 'chat on');
     }
     if (data.id && _sbPending[data.id]) {
