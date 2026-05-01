@@ -148,7 +148,7 @@ let sbWs = null;
 let _sbReqId = 0;
 const _sbPending = {};
 
-async function _sbAuthenticate(session, salt, onStatus) {
+async function _sbAuthenticate(salt, challenge, onStatus) {
   const password = (localStorage.getItem('streamerbot_password') || '').trim();
   if (!password) {
     console.warn('[SB] authentication required but no password configured');
@@ -158,7 +158,7 @@ async function _sbAuthenticate(session, salt, onStatus) {
   const enc = new TextEncoder();
   const step1Buf = await crypto.subtle.digest('SHA-256', enc.encode(password + salt));
   const step1B64 = btoa(String.fromCharCode(...new Uint8Array(step1Buf)));
-  const step2Buf = await crypto.subtle.digest('SHA-256', enc.encode(step1B64 + session));
+  const step2Buf = await crypto.subtle.digest('SHA-256', enc.encode(step1B64 + challenge));
   const step2B64 = btoa(String.fromCharCode(...new Uint8Array(step2Buf)));
   try {
     await _sbSend({ request: 'Authenticate', authentication: step2B64 });
@@ -201,7 +201,7 @@ function connectStreamerbot(onStatus) {
       console.log('[SB] Hello auth block:', JSON.stringify(authBlock));
       if (authBlock?.salt) {
         console.log('[SB] Hello requires auth — authenticating…');
-        _sbAuthenticate(data.session, authBlock.salt, onStatus);
+        _sbAuthenticate(authBlock.salt, authBlock.challenge, onStatus);
       } else {
         console.log('[SB] Hello received → connected (no auth required)');
         onStatus?.('connected', 'chat on');
