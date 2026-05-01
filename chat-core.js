@@ -195,13 +195,15 @@ function connectStreamerbot(onStatus) {
       console.warn('[SB] failed to parse message:', e.data, err);
       return;
     }
-    console.log('[SB] message received — type:', data.type, '| event.type:', data.event?.type, '| full:', JSON.stringify(data).slice(0, 300));
+    console.log('[SB] message received — type:', data.type, '| event.type:', data.event?.type, '| full:', JSON.stringify(data).slice(0, 1000));
     if (data.event?.type === 'Hello' || data.request === 'Hello') {
-      if (data.authentication?.salt) {
+      const authBlock = data.authentication || data.info?.authentication;
+      console.log('[SB] Hello auth block:', JSON.stringify(authBlock));
+      if (authBlock?.salt) {
         console.log('[SB] Hello requires auth — authenticating…');
-        _sbAuthenticate(data.session, data.authentication.salt, onStatus);
+        _sbAuthenticate(data.session, authBlock.salt, onStatus);
       } else {
-        console.log('[SB] Hello received → connected');
+        console.log('[SB] Hello received → connected (no auth required)');
         onStatus?.('connected', 'chat on');
       }
     }
