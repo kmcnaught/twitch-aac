@@ -555,6 +555,7 @@ function speak(text, card) {
   speakingCard = card;
   if (card) card.classList.add('speaking');
 
+  console.log('[SB] speak() triggered, posting to chat:', text);
   postToChat(text);
 
   const voiceId = localStorage.getItem('el_voice_id') || '';

@@ -150,35 +150,53 @@ const _sbPending = {};
 
 function connectStreamerbot(onStatus) {
   const raw = (localStorage.getItem('streamerbot_host') || '').trim();
-  if (!raw) return;
+  if (!raw) { console.log('[SB] no host configured, skipping'); return; }
 
   const colonIdx = raw.lastIndexOf(':');
   const host = colonIdx > 0 ? raw.slice(0, colonIdx) : raw;
   const port = colonIdx > 0 ? (parseInt(raw.slice(colonIdx + 1)) || 8080) : 8080;
+
+  console.log(`[SB] connecting to ws://${host}:${port}/`);
 
   if (sbWs) { try { sbWs.onclose = null; sbWs.close(); } catch(_) {} sbWs = null; }
 
   const sock = new WebSocket(`ws://${host}:${port}/`);
   sbWs = sock;
 
+  sock.onopen = () => {
+    console.log('[SB] socket open (readyState:', sock.readyState, ') — waiting for Hello…');
+  };
+
   sock.onmessage = (e) => {
     let data;
-    try { data = JSON.parse(e.data); } catch(_) { return; }
+    try { data = JSON.parse(e.data); } catch(err) {
+      console.warn('[SB] failed to parse message:', e.data, err);
+      return;
+    }
+    console.log('[SB] message received — type:', data.type, '| event.type:', data.event?.type, '| full:', JSON.stringify(data).slice(0, 300));
     if (data.event?.type === 'Hello' || data.type === 'Hello') {
+      console.log('[SB] Hello received → connected');
       onStatus?.('connected', 'chat on');
     }
     if (data.id && _sbPending[data.id]) {
+      console.log('[SB] response for id:', data.id, '| status:', data.status);
       const { resolve, reject } = _sbPending[data.id];
       delete _sbPending[data.id];
       data.status === 'ok' ? resolve(data) : reject(new Error(data.error || 'failed'));
     }
   };
-  sock.onerror = () => { /* onclose handles cleanup */ };
-  sock.onclose = () => {
-    if (sbWs !== sock) return;
+
+  sock.onerror = (e) => {
+    console.error('[SB] socket error:', e);
+  };
+
+  sock.onclose = (e) => {
+    console.log('[SB] socket closed — code:', e.code, '| reason:', e.reason || '(none)', '| clean:', e.wasClean);
+    if (sbWs !== sock) { console.log('[SB] stale socket closed, ignoring'); return; }
     Object.values(_sbPending).forEach(({ reject }) => reject(new Error('disconnected')));
     for (const k in _sbPending) delete _sbPending[k];
-    if (!(localStorage.getItem('streamerbot_host') || '').trim()) return;
+    if (!(localStorage.getItem('streamerbot_host') || '').trim()) { console.log('[SB] host cleared, not reconnecting'); return; }
+    console.log('[SB] will reconnect in 4s…');
     onStatus?.('connecting', 'reconnecting…');
     setTimeout(() => connectStreamerbot(onStatus), 4000);
   };
@@ -186,20 +204,30 @@ function connectStreamerbot(onStatus) {
 
 function _sbSend(req) {
   return new Promise((resolve, reject) => {
-    if (!sbWs || sbWs.readyState !== WebSocket.OPEN) return reject(new Error('not connected'));
+    if (!sbWs || sbWs.readyState !== WebSocket.OPEN) {
+      console.warn('[SB] _sbSend: not connected (readyState:', sbWs?.readyState, ')');
+      return reject(new Error('not connected'));
+    }
     const id = 'sb-' + (++_sbReqId);
     _sbPending[id] = { resolve, reject };
-    setTimeout(() => { if (_sbPending[id]) { delete _sbPending[id]; reject(new Error('timeout')); } }, 5000);
-    sbWs.send(JSON.stringify({ ...req, id }));
+    const payload = JSON.stringify({ ...req, id });
+    console.log('[SB] sending:', payload);
+    setTimeout(() => { if (_sbPending[id]) { delete _sbPending[id]; console.warn('[SB] request timed out, id:', id); reject(new Error('timeout')); } }, 5000);
+    sbWs.send(payload);
   });
 }
 
 async function postToChat(text) {
-  if (!sbWs || sbWs.readyState !== WebSocket.OPEN) return;
+  if (!sbWs || sbWs.readyState !== WebSocket.OPEN) {
+    console.warn('[SB] postToChat: skipping, not connected (readyState:', sbWs?.readyState, ')');
+    return;
+  }
+  console.log('[SB] postToChat:', text);
   try {
     await _sbSend({ request: 'SendMessage', platform: 'twitch', bot: true, internal: false, message: text });
+    console.log('[SB] postToChat: sent OK');
   } catch(e) {
-    console.error('Streamer.bot SendMessage:', e.message);
+    console.error('[SB] SendMessage failed:', e.message);
   }
 }
 
