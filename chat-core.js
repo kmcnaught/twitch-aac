@@ -148,6 +148,28 @@ let sbWs = null;
 let _sbReqId = 0;
 const _sbPending = {};
 
+async function _sbAuthenticate(session, salt, onStatus) {
+  const password = (localStorage.getItem('streamerbot_password') || '').trim();
+  if (!password) {
+    console.warn('[SB] authentication required but no password configured');
+    onStatus?.('error', 'auth: no password');
+    return;
+  }
+  const enc = new TextEncoder();
+  const step1Buf = await crypto.subtle.digest('SHA-256', enc.encode(password + salt));
+  const step1B64 = btoa(String.fromCharCode(...new Uint8Array(step1Buf)));
+  const step2Buf = await crypto.subtle.digest('SHA-256', enc.encode(step1B64 + session));
+  const step2B64 = btoa(String.fromCharCode(...new Uint8Array(step2Buf)));
+  try {
+    await _sbSend({ request: 'Authenticate', authentication: step2B64 });
+    console.log('[SB] authenticated OK → connected');
+    onStatus?.('connected', 'chat on');
+  } catch(e) {
+    console.error('[SB] authentication failed:', e.message);
+    onStatus?.('error', 'auth failed');
+  }
+}
+
 function connectStreamerbot(onStatus) {
   const raw = (localStorage.getItem('streamerbot_host') || '').trim();
   if (!raw) { console.log('[SB] no host configured, skipping'); return; }
@@ -174,9 +196,14 @@ function connectStreamerbot(onStatus) {
       return;
     }
     console.log('[SB] message received — type:', data.type, '| event.type:', data.event?.type, '| full:', JSON.stringify(data).slice(0, 300));
-    if (data.event?.type === 'Hello' || data.type === 'Hello') {
-      console.log('[SB] Hello received → connected');
-      onStatus?.('connected', 'chat on');
+    if (data.event?.type === 'Hello' || data.request === 'Hello') {
+      if (data.authentication?.salt) {
+        console.log('[SB] Hello requires auth — authenticating…');
+        _sbAuthenticate(data.session, data.authentication.salt, onStatus);
+      } else {
+        console.log('[SB] Hello received → connected');
+        onStatus?.('connected', 'chat on');
+      }
     }
     if (data.id && _sbPending[data.id]) {
       console.log('[SB] response for id:', data.id, '| status:', data.status);

@@ -70,6 +70,13 @@
         </div>
       </div>
       <div class="row">
+        <label for="sb-password-input">sb password</label>
+        <div class="input-wrap">
+          <input type="password" id="sb-password-input" placeholder="leave blank if auth disabled" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+        </div>
+      </div>
+      <div class="row">
         <label for="game-select">game</label>
         <select id="game-select">
           <option value="">— not specified —</option>
@@ -238,6 +245,11 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sb-host-input').addEventListener('change', () =>
     localStorage.setItem('streamerbot_host', document.getElementById('sb-host-input').value.trim()));
 
+  const savedSbPassword = localStorage.getItem('streamerbot_password');
+  if (savedSbPassword) document.getElementById('sb-password-input').value = savedSbPassword;
+  document.getElementById('sb-password-input').addEventListener('change', () =>
+    localStorage.setItem('streamerbot_password', document.getElementById('sb-password-input').value.trim()));
+
 
   // Game select
   const savedGame = localStorage.getItem('game') || '';
@@ -303,7 +315,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
 
   // Clear buttons
-  ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input','sb-host-input'].forEach(id => {
+  ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input','sb-host-input','sb-password-input'].forEach(id => {
     const inp = document.getElementById(id);
     initClearBtn(inp, inp.parentElement.querySelector('.input-clear'));
   });
@@ -458,6 +470,7 @@ function goToChat() {
   invalidateBotCache();
   localStorage.setItem('youtube_video_url', document.getElementById('yt-channel-input').value.trim());
   localStorage.setItem('streamerbot_host', document.getElementById('sb-host-input').value.trim());
+  localStorage.setItem('streamerbot_password', document.getElementById('sb-password-input').value.trim());
   const gameVal = document.getElementById('game-select').value;
   localStorage.setItem('game', gameVal);
   localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
