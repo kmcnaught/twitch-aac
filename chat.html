@@ -18,7 +18,6 @@
     <div id="fs-status-dot"></div>
     <div id="fs-status-label">connecting…</div>
     <span id="fs-yt-status" style="display:none"><span class="src-badge src-yt">YT</span><span id="fs-yt-label">–</span></span>
-    <span id="fs-sb-status" style="display:none"><span class="src-badge src-sb">SB</span><span id="fs-sb-label">–</span></span>
     <div class="fs-verbosity" style="margin-left:12px">
       <label style="font-size:14px;color:var(--muted);margin-right:2px">length</label>
       <button class="pill active" data-fv="short" onclick="setFV(this)">short</button>
@@ -142,12 +141,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (ch) connect(ch);
   connectYouTube();
 
-  // Streamer.bot
-  if ((localStorage.getItem('streamerbot_host') || '').trim()) {
-    setSbStatus('connecting', 'connecting…');
-    connectStreamerbot(setSbStatus);
-  }
-
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
   seedPhrasesIfEmpty();
 });
@@ -201,8 +194,6 @@ function makeStatusUpdater(wrapperId, labelId) {
   };
 }
 
-const setSbStatus = makeStatusUpdater('fs-sb-status', 'fs-sb-label');
-
 // ── SUGGEST BUTTONS ──
 function setFsSuggestEnabled(enabled) {
   document.getElementById('fs-suggest-btn').disabled = !enabled;
@@ -239,13 +230,31 @@ function connect(rawCh) {
   ws = sock;
   ws.onopen = () => {
     if (ws !== sock) return;
-    sock.send('PASS oauth:justinfan12345');
-    sock.send('NICK justinfan12345');
+    const token = localStorage.getItem('twitch_token');
+    const handle = (localStorage.getItem('twitch_handle') || '').trim().toLowerCase();
+    if (token && handle) {
+      sock.send('PASS oauth:' + token);
+      sock.send('NICK ' + handle);
+    } else {
+      sock.send('PASS oauth:justinfan12345');
+      sock.send('NICK justinfan12345');
+    }
     sock.send('JOIN #' + ch);
   };
   ws.onmessage = (e) => {
     const raw = e.data.trim();
     if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
+    if (raw.includes('NOTICE') && raw.includes('Login authentication failed')) {
+      localStorage.removeItem('twitch_token');
+      setStatus('error', 'Twitch token expired — reconnect in settings');
+      clearTimeout(reconnectTimer);
+      sock.onclose = null;
+      sock.close();
+      ws = null;
+      isConnected = false;
+      updateSuggestEnabled();
+      return;
+    }
     if (raw.includes('366')) {
       const wasReconnect = everConnected && !isConnected;
       isConnected = true;
@@ -284,8 +293,6 @@ document.addEventListener('visibilitychange', () => {
     clearTimeout(reconnectTimer);
     connect(currentChannel);
   }
-  const sbHost = (localStorage.getItem('streamerbot_host') || '').trim();
-  if (sbHost && (!sbWs || sbWs.readyState !== WebSocket.OPEN)) connectStreamerbot(setSbStatus);
 });
 
 // ── YOUTUBE CHAT ──
@@ -555,7 +562,6 @@ function speak(text, card) {
   speakingCard = card;
   if (card) card.classList.add('speaking');
 
-  console.log('[SB] speak() triggered, posting to chat:', text);
   postToChat(text);
 
   const voiceId = localStorage.getItem('el_voice_id') || '';

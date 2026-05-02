@@ -143,120 +143,39 @@ function clearSpeak(card) {
   speakingCard = null;
 }
 
-// ── STREAMER.BOT ──
-let sbWs = null;
-let _sbReqId = 0;
-const _sbPending = {};
+// ── TWITCH CHAT SEND ──
+function postToChat(text) {
+  const token = localStorage.getItem('twitch_token');
+  if (!token) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!currentChannel) return;
 
-async function _sbAuthenticate(salt, challenge, onStatus) {
-  const password = (localStorage.getItem('streamerbot_password') || '').trim();
-  if (!password) {
-    console.warn('[SB] authentication required but no password configured');
-    onStatus?.('error', 'auth: no password');
+  const MAX = 490; // Twitch IRC limit is 500 bytes; leave room for prefix overhead
+  if (text.length <= MAX) {
+    ws.send(`PRIVMSG #${currentChannel} :${text}`);
     return;
   }
-  const enc = new TextEncoder();
-  const step1Buf = await crypto.subtle.digest('SHA-256', enc.encode(password + salt));
-  const step1B64 = btoa(String.fromCharCode(...new Uint8Array(step1Buf)));
-  const step2Buf = await crypto.subtle.digest('SHA-256', enc.encode(step1B64 + challenge));
-  const step2B64 = btoa(String.fromCharCode(...new Uint8Array(step2Buf)));
-  try {
-    await _sbSend({ request: 'Authenticate', authentication: step2B64 });
-    console.log('[SB] authenticated OK → connected');
-    onStatus?.('connected', 'chat on');
-  } catch(e) {
-    console.error('[SB] authentication failed:', e.message);
-    onStatus?.('error', 'auth failed');
+
+  // Split on word boundaries, carrying '…' continuation markers
+  const chunks = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    const prefix = chunks.length === 0 ? '' : '… ';
+    const budget = MAX - prefix.length;
+    if (remaining.length <= budget) {
+      chunks.push(prefix + remaining);
+      break;
+    }
+    // Reserve 2 chars for the trailing ' …'
+    const window = budget - 2;
+    let cut = remaining.lastIndexOf(' ', window);
+    if (cut <= 0) cut = window; // no space found, hard cut
+    chunks.push(prefix + remaining.slice(0, cut) + ' …');
+    remaining = remaining.slice(cut).trimStart();
   }
-}
 
-function connectStreamerbot(onStatus) {
-  const raw = (localStorage.getItem('streamerbot_host') || '').trim();
-  if (!raw) { console.log('[SB] no host configured, skipping'); return; }
-
-  const colonIdx = raw.lastIndexOf(':');
-  const host = colonIdx > 0 ? raw.slice(0, colonIdx) : raw;
-  const port = colonIdx > 0 ? (parseInt(raw.slice(colonIdx + 1)) || 8080) : 8080;
-
-  console.log(`[SB] connecting to ws://${host}:${port}/`);
-
-  if (sbWs) { try { sbWs.onclose = null; sbWs.close(); } catch(_) {} sbWs = null; }
-
-  const sock = new WebSocket(`ws://${host}:${port}/`);
-  sbWs = sock;
-
-  sock.onopen = () => {
-    console.log('[SB] socket open (readyState:', sock.readyState, ') — waiting for Hello…');
-  };
-
-  sock.onmessage = (e) => {
-    let data;
-    try { data = JSON.parse(e.data); } catch(err) {
-      console.warn('[SB] failed to parse message:', e.data, err);
-      return;
-    }
-    console.log('[SB] message received — type:', data.type, '| event.type:', data.event?.type, '| full:', JSON.stringify(data).slice(0, 1000));
-    if (data.event?.type === 'Hello' || data.request === 'Hello') {
-      const authBlock = data.authentication || data.info?.authentication;
-      console.log('[SB] Hello auth block:', JSON.stringify(authBlock));
-      if (authBlock?.salt) {
-        console.log('[SB] Hello requires auth — authenticating…');
-        _sbAuthenticate(authBlock.salt, authBlock.challenge, onStatus);
-      } else {
-        console.log('[SB] Hello received → connected (no auth required)');
-        onStatus?.('connected', 'chat on');
-      }
-    }
-    if (data.id && _sbPending[data.id]) {
-      console.log('[SB] response for id:', data.id, '| status:', data.status);
-      const { resolve, reject } = _sbPending[data.id];
-      delete _sbPending[data.id];
-      data.status === 'ok' ? resolve(data) : reject(new Error(data.error || 'failed'));
-    }
-  };
-
-  sock.onerror = (e) => {
-    console.error('[SB] socket error:', e);
-  };
-
-  sock.onclose = (e) => {
-    console.log('[SB] socket closed — code:', e.code, '| reason:', e.reason || '(none)', '| clean:', e.wasClean);
-    if (sbWs !== sock) { console.log('[SB] stale socket closed, ignoring'); return; }
-    Object.values(_sbPending).forEach(({ reject }) => reject(new Error('disconnected')));
-    for (const k in _sbPending) delete _sbPending[k];
-    if (!(localStorage.getItem('streamerbot_host') || '').trim()) { console.log('[SB] host cleared, not reconnecting'); return; }
-    console.log('[SB] will reconnect in 4s…');
-    onStatus?.('connecting', 'reconnecting…');
-    setTimeout(() => connectStreamerbot(onStatus), 4000);
-  };
-}
-
-function _sbSend(req) {
-  return new Promise((resolve, reject) => {
-    if (!sbWs || sbWs.readyState !== WebSocket.OPEN) {
-      console.warn('[SB] _sbSend: not connected (readyState:', sbWs?.readyState, ')');
-      return reject(new Error('not connected'));
-    }
-    const id = 'sb-' + (++_sbReqId);
-    _sbPending[id] = { resolve, reject };
-    const payload = JSON.stringify({ ...req, id });
-    console.log('[SB] sending:', payload);
-    setTimeout(() => { if (_sbPending[id]) { delete _sbPending[id]; console.warn('[SB] request timed out, id:', id); reject(new Error('timeout')); } }, 5000);
-    sbWs.send(payload);
-  });
-}
-
-async function postToChat(text) {
-  if (!sbWs || sbWs.readyState !== WebSocket.OPEN) {
-    console.warn('[SB] postToChat: skipping, not connected (readyState:', sbWs?.readyState, ')');
-    return;
-  }
-  console.log('[SB] postToChat:', text);
-  try {
-    await _sbSend({ request: 'SendMessage', platform: 'twitch', bot: true, internal: false, message: text });
-    console.log('[SB] postToChat: sent OK');
-  } catch(e) {
-    console.error('[SB] SendMessage failed:', e.message);
+  for (const chunk of chunks) {
+    ws.send(`PRIVMSG #${currentChannel} :${chunk}`);
   }
 }
 

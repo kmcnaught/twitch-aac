@@ -63,18 +63,9 @@
         </div>
       </div>
       <div class="row">
-        <label for="sb-host-input">streamer.bot</label>
-        <div class="input-wrap">
-          <input type="text" id="sb-host-input" placeholder="127.0.0.1:8080 (optional)" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-          <button class="input-clear" aria-label="Clear">✕</button>
-        </div>
-      </div>
-      <div class="row">
-        <label for="sb-password-input">sb password</label>
-        <div class="input-wrap">
-          <input type="password" id="sb-password-input" placeholder="leave blank if auth disabled" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-          <button class="input-clear" aria-label="Clear">✕</button>
-        </div>
+        <label>send chat</label>
+        <button class="hbtn" id="twitch-auth-btn" onclick="startTwitchAuth()">connect twitch</button>
+        <span id="twitch-auth-status" style="font-size:13px;color:var(--muted);margin-left:8px"></span>
       </div>
       <div class="row">
         <label for="game-select">game</label>
@@ -240,15 +231,20 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('yt-channel-input').addEventListener('change', () =>
     localStorage.setItem('youtube_video_url', document.getElementById('yt-channel-input').value.trim()));
 
-  const savedSbHost = localStorage.getItem('streamerbot_host');
-  if (savedSbHost) document.getElementById('sb-host-input').value = savedSbHost;
-  document.getElementById('sb-host-input').addEventListener('change', () =>
-    localStorage.setItem('streamerbot_host', document.getElementById('sb-host-input').value.trim()));
-
-  const savedSbPassword = localStorage.getItem('streamerbot_password');
-  if (savedSbPassword) document.getElementById('sb-password-input').value = savedSbPassword;
-  document.getElementById('sb-password-input').addEventListener('change', () =>
-    localStorage.setItem('streamerbot_password', document.getElementById('sb-password-input').value.trim()));
+  // Handle OAuth redirect return (token in URL hash)
+  const hash = window.location.hash;
+  if (hash.includes('access_token=')) {
+    const params = new URLSearchParams(hash.slice(1));
+    const token = params.get('access_token');
+    if (token) {
+      localStorage.setItem('twitch_token', token);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      validateTwitchToken(token);
+    }
+  } else {
+    const existingToken = localStorage.getItem('twitch_token');
+    if (existingToken) validateTwitchToken(existingToken);
+  }
 
 
   // Game select
@@ -315,7 +311,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
 
   // Clear buttons
-  ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input','sb-host-input','sb-password-input'].forEach(id => {
+  ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input'].forEach(id => {
     const inp = document.getElementById(id);
     initClearBtn(inp, inp.parentElement.querySelector('.input-clear'));
   });
@@ -456,6 +452,50 @@ function stepElSpeed(dir) {
   document.getElementById('el-speed-label').textContent = val + '×';
 }
 
+// ── TWITCH AUTH ──
+const TWITCH_CLIENT_ID = '2fum3pmd4efx9zf5cnd1kdm905cwkm';
+
+function startTwitchAuth() {
+  const url = 'https://id.twitch.tv/oauth2/authorize'
+    + '?client_id=' + TWITCH_CLIENT_ID
+    + '&redirect_uri=' + encodeURIComponent(window.location.origin + window.location.pathname)
+    + '&response_type=token'
+    + '&scope=' + encodeURIComponent('chat:edit');
+  window.location.href = url;
+}
+
+async function validateTwitchToken(token) {
+  const btn = document.getElementById('twitch-auth-btn');
+  btn.disabled = true;
+  setTwitchAuthStatus('verifying…', '');
+  try {
+    const r = await fetch('https://id.twitch.tv/oauth2/validate', {
+      headers: { 'Authorization': 'OAuth ' + token }
+    });
+    if (!r.ok) {
+      localStorage.removeItem('twitch_token');
+      setTwitchAuthStatus('token expired — reconnect', 'err');
+      btn.disabled = false;
+      return;
+    }
+    const data = await r.json();
+    setTwitchAuthStatus('connected as @' + data.login, 'ok');
+    // OAuth login is authoritative for the handle — overwrite whatever was set manually
+    localStorage.setItem('twitch_handle', data.login);
+    document.getElementById('handle-input').value = data.login;
+  } catch(e) {
+    setTwitchAuthStatus('could not verify token', 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function setTwitchAuthStatus(msg, cls) {
+  const el = document.getElementById('twitch-auth-status');
+  el.textContent = msg;
+  el.style.color = cls === 'err' ? 'var(--accent2)' : cls === 'ok' ? '#4ade80' : 'var(--muted)';
+}
+
 // ── START GENERATING → navigate to chat page ──
 function goToChat() {
   const ch = document.getElementById('channel-input').value.trim();
@@ -463,14 +503,15 @@ function goToChat() {
   if (!ch && !ytUrl) { document.getElementById('channel-input').focus(); return; }
   // Flush all fields to localStorage before navigating
   localStorage.setItem('twitch_channel', ch);
-  localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim());
+  // If OAuth token is present the handle was already stored authoritatively by validateTwitchToken
+  if (!localStorage.getItem('twitch_token')) {
+    localStorage.setItem('twitch_handle', document.getElementById('handle-input').value.trim());
+  }
   localStorage.setItem('persona', document.getElementById('persona-input').value.trim());
   localStorage.setItem('context', document.getElementById('ctx-input').value.trim());
   localStorage.setItem('ignored_bots', document.getElementById('bots-input').value.trim());
   invalidateBotCache();
   localStorage.setItem('youtube_video_url', document.getElementById('yt-channel-input').value.trim());
-  localStorage.setItem('streamerbot_host', document.getElementById('sb-host-input').value.trim());
-  localStorage.setItem('streamerbot_password', document.getElementById('sb-password-input').value.trim());
   const gameVal = document.getElementById('game-select').value;
   localStorage.setItem('game', gameVal);
   localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
