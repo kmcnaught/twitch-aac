@@ -250,7 +250,7 @@ function connect(rawCh) {
     if (raw.includes('NOTICE') && (raw.includes('Login authentication failed') || raw.includes('Login unsuccessful') || raw.includes('Improperly formatted auth'))) {
       console.warn('[Twitch IRC] Auth failed — clearing token and falling back to anonymous');
       localStorage.removeItem('twitch_token');
-      setStatus('warn', 'Twitch auth failed — reading chat anonymously');
+      setStatus('warn', 'Twitch auth failed — speaking only (not posting to chat)');
       clearTimeout(reconnectTimer);
       sock.onclose = null;
       sock.close();

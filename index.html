@@ -461,7 +461,7 @@ function startTwitchAuth() {
     + '?client_id=' + TWITCH_CLIENT_ID
     + '&redirect_uri=' + encodeURIComponent(window.location.origin + window.location.pathname)
     + '&response_type=token'
-    + '&scope=' + encodeURIComponent('chat:edit');
+    + '&scope=' + encodeURIComponent('chat:read chat:edit');
   window.location.href = url;
 }
 
@@ -501,7 +501,7 @@ function setTwitchAuthStatus(msg, cls) {
 function disconnectTwitch() {
   localStorage.removeItem('twitch_token');
   document.getElementById('twitch-disconnect-btn').style.display = 'none';
-  setTwitchAuthStatus('disconnected — chat will read anonymously', '');
+  setTwitchAuthStatus('disconnected — speaking only (not posting to chat)', '');
 }
 
 // ── START GENERATING → navigate to chat page ──
