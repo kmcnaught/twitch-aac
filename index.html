@@ -65,6 +65,7 @@
       <div class="row">
         <label>send chat</label>
         <button class="hbtn" id="twitch-auth-btn" onclick="startTwitchAuth()">connect twitch</button>
+        <button class="hbtn" id="twitch-disconnect-btn" onclick="disconnectTwitch()" style="display:none">disconnect</button>
         <span id="twitch-auth-status" style="font-size:13px;color:var(--muted);margin-left:8px"></span>
       </div>
       <div class="row">
@@ -480,6 +481,7 @@ async function validateTwitchToken(token) {
     }
     const data = await r.json();
     setTwitchAuthStatus('connected as @' + data.login, 'ok');
+    document.getElementById('twitch-disconnect-btn').style.display = '';
     // OAuth login is authoritative for the handle — overwrite whatever was set manually
     localStorage.setItem('twitch_handle', data.login);
     document.getElementById('handle-input').value = data.login;
@@ -494,6 +496,12 @@ function setTwitchAuthStatus(msg, cls) {
   const el = document.getElementById('twitch-auth-status');
   el.textContent = msg;
   el.style.color = cls === 'err' ? 'var(--accent2)' : cls === 'ok' ? '#4ade80' : 'var(--muted)';
+}
+
+function disconnectTwitch() {
+  localStorage.removeItem('twitch_token');
+  document.getElementById('twitch-disconnect-btn').style.display = 'none';
+  setTwitchAuthStatus('disconnected — chat will read anonymously', '');
 }
 
 // ── START GENERATING → navigate to chat page ──

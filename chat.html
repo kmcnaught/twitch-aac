@@ -233,9 +233,11 @@ function connect(rawCh) {
     const token = localStorage.getItem('twitch_token');
     const handle = (localStorage.getItem('twitch_handle') || '').trim().toLowerCase();
     if (token && handle) {
+      console.log('[Twitch IRC] Connecting authenticated as @' + handle);
       sock.send('PASS oauth:' + token);
       sock.send('NICK ' + handle);
     } else {
+      console.log('[Twitch IRC] Connecting anonymously (justinfan)');
       sock.send('PASS oauth:justinfan12345');
       sock.send('NICK justinfan12345');
     }
@@ -243,16 +245,19 @@ function connect(rawCh) {
   };
   ws.onmessage = (e) => {
     const raw = e.data.trim();
+    console.log('[Twitch IRC]', raw);
     if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
-    if (raw.includes('NOTICE') && raw.includes('Login authentication failed')) {
+    if (raw.includes('NOTICE') && (raw.includes('Login authentication failed') || raw.includes('Login unsuccessful') || raw.includes('Improperly formatted auth'))) {
+      console.warn('[Twitch IRC] Auth failed — clearing token and falling back to anonymous');
       localStorage.removeItem('twitch_token');
-      setStatus('error', 'Twitch token expired — reconnect in settings');
+      setStatus('warn', 'Twitch auth failed — reading chat anonymously');
       clearTimeout(reconnectTimer);
       sock.onclose = null;
       sock.close();
       ws = null;
       isConnected = false;
       updateSuggestEnabled();
+      reconnectTimer = setTimeout(() => connect(currentChannel), 1000);
       return;
     }
     if (raw.includes('366')) {
@@ -267,14 +272,16 @@ function connect(rawCh) {
     const msg = parseIrcMsg(raw);
     if (msg) addMsg(msg.user, msg.text, msg.emotesTag, 'twitch');
   };
-  ws.onerror = () => {
+  ws.onerror = (e) => {
+    console.error('[Twitch IRC] WebSocket error', e);
     isConnected = false;
     if (!everConnected) {
       setStatus('error', 'connection error');
       // onclose will fire next and handle the alert
     }
   };
-  ws.onclose = () => {
+  ws.onclose = (e) => {
+    console.log('[Twitch IRC] WebSocket closed — code:', e.code, 'reason:', JSON.stringify(e.reason), 'wasClean:', e.wasClean);
     if (ws !== sock) return;
     isConnected = false;
     updateSuggestEnabled();
