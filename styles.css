@@ -843,3 +843,6 @@
   .profile-cards { grid-template-columns: repeat(auto-fill, 180px); }
   .profile-settings { padding: 16px; }
 }
+
+.profile-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.profile-transfer-hint { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 12px; }

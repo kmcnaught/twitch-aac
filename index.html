@@ -28,7 +28,9 @@
       <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
     </nav>
     <main class="profiles-main">
-      <div class="profiles-heading"><div><h1 id="profiles-heading">Profiles</h1><p>Save different setups for different games, moods or streams.</p></div><button class="primary" id="new-profile-btn">＋ New profile</button></div>
+      <div class="profiles-heading"><div><h1 id="profiles-heading">Profiles</h1><p>Save different setups for different games, moods or streams.</p></div><div class="profile-toolbar"><button class="hbtn" id="export-profiles-btn">Export profiles</button><button class="hbtn" id="import-profiles-btn">Import profiles</button><button class="primary" id="new-profile-btn">＋ New profile</button></div></div>
+      <input type="file" id="import-profiles-file" accept=".json,application/json" hidden>
+      <p class="profile-transfer-hint">Export saves all profiles to a file. Import adds profiles without replacing your existing setups.</p>
       <div id="profile-cards" class="profile-cards" aria-label="Saved profiles"></div>
       <section class="profile-settings" aria-labelledby="profile-settings-heading">
       <div class="settings-heading"><h2 id="profile-settings-heading">Profile settings</h2><button class="hbtn" id="duplicate-profile-btn">▢ Save as new profile</button></div>

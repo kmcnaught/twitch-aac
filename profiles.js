@@ -111,7 +111,7 @@ function applyProfile(id) {
 function createProfile(duplicate = false) {
   saveActiveProfile();
   const current = profiles.find(p => p.id === activeProfileId);
-  const profile = { id: crypto.randomUUID(), name: duplicate ? current.name + ' copy' : 'New profile',
+  const profile = { id: crypto.randomUUID(), name: duplicate ? current.name.slice(0, 75) + ' copy' : 'New profile',
     description: duplicate ? current.description : '', icon: duplicate ? current.icon : '🎮',
     settings: duplicate ? { ...current.settings } : {} };
   profiles.push(profile);
@@ -120,6 +120,84 @@ function createProfile(duplicate = false) {
   document.getElementById('profile-name').focus();
   document.getElementById('profile-name').select();
   document.getElementById('profile-status').textContent = duplicate ? 'Profile copied. Changes save automatically.' : 'New profile created. Changes save automatically.';
+}
+function exportProfiles() {
+  saveActiveProfile();
+  const exported = profiles.map(profile => ({
+    name: profile.name, description: profile.description || '', icon: profile.icon || '🎮',
+    settings: Object.fromEntries(Object.values(PROFILE_FIELDS).map(key => [key, profile.settings[key] || '']))
+  }));
+  const blob = new Blob([JSON.stringify({ format: 'streamaac-profiles', version: 1, profiles: exported }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'streamaac-profiles.json';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  document.getElementById('profile-status').textContent = 'Profiles exported. The file includes your stream setup, but no login tokens or API keys.';
+}
+function parseProfileImport(text) {
+  const data = JSON.parse(text);
+  if (!data || data.format !== 'streamaac-profiles' || data.version !== 1 || !Array.isArray(data.profiles) || !data.profiles.length || data.profiles.length > 1000) {
+    throw new Error('Choose a StreamAAC profiles export file (version 1).');
+  }
+  return data.profiles.map(profile => {
+    if (!profile || typeof profile.name !== 'string' || !profile.name.trim()
+      || (profile.description !== undefined && typeof profile.description !== 'string')
+      || (profile.icon !== undefined && (typeof profile.icon !== 'string' || profile.icon.length > 32))
+      || !profile.settings || typeof profile.settings !== 'object' || Array.isArray(profile.settings)) {
+      throw new Error('The file contains an invalid profile. No profiles were imported.');
+    }
+    const settings = {};
+    for (const key of Object.values(PROFILE_FIELDS)) {
+      const value = profile.settings[key] ?? '';
+      if (typeof value !== 'string') throw new Error('The file contains invalid profile settings. No profiles were imported.');
+      settings[key] = value;
+    }
+    const gameOptions = [...document.getElementById('game-select').options].map(option => option.value);
+    if (!gameOptions.includes(settings.game)) {
+      settings.game_custom = settings.game;
+      settings.game = 'other';
+    }
+    return { id: crypto.randomUUID(), name: profile.name.trim(), description: profile.description || '', icon: profile.icon || '🎮', settings };
+  });
+}
+async function importProfiles(file) {
+  if (!file) return;
+  const status = document.getElementById('profile-status');
+  try {
+    if (file.size > 1024 * 1024) throw new Error('Choose a profiles file smaller than 1 MB.');
+    const imported = parseProfileImport(await file.text());
+    saveActiveProfile();
+    const names = new Set(profiles.map(profile => profile.name));
+    for (const profile of imported) {
+      const originalName = profile.name;
+      let suffix = 2;
+      while (names.has(profile.name)) {
+        const ending = ' (' + suffix++ + ')';
+        profile.name = originalName.slice(0, Math.max(80, originalName.length) - ending.length) + ending;
+      }
+      names.add(profile.name);
+    }
+    const previousProfiles = JSON.parse(JSON.stringify(profiles));
+    const previousSavedProfiles = JSON.parse(JSON.stringify(savedProfiles));
+    profiles.push(...imported);
+    try {
+      persistProfiles();
+    } catch {
+      profiles = previousProfiles;
+      savedProfiles = previousSavedProfiles;
+      throw new Error('Profiles could not be saved. Your browser storage may be full. No profiles were imported.');
+    }
+    renderProfiles();
+    status.textContent = imported.length + (imported.length === 1 ? ' profile imported.' : ' profiles imported.') + ' Your current profile is still active.';
+  } catch (error) {
+    status.textContent = error instanceof SyntaxError ? 'This file is not valid JSON. No profiles were imported.' : error.message;
+  } finally {
+    document.getElementById('import-profiles-file').value = '';
+  }
 }
 function renderProfiles() {
   const container = document.getElementById('profile-cards');
@@ -177,6 +255,9 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById(id).addEventListener('input', saveActiveProfile);
     document.getElementById(id).addEventListener('change', saveActiveProfile);
   });
+  document.getElementById('export-profiles-btn').onclick = exportProfiles;
+  document.getElementById('import-profiles-btn').onclick = () => document.getElementById('import-profiles-file').click();
+  document.getElementById('import-profiles-file').onchange = event => importProfiles(event.target.files[0]);
   document.getElementById('new-profile-btn').onclick = () => createProfile();
   document.getElementById('duplicate-profile-btn').onclick = () => createProfile(true);
 });
