@@ -843,3 +843,16 @@
   .profile-cards { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); }
   .profile-settings { padding: 16px; }
 }
+
+#build-stamp {
+  position: fixed;
+  bottom: 6px;
+  right: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+#build-stamp:empty { display: none; }
