@@ -8,6 +8,7 @@
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js" defer></script>
 <script src="profiles.js" defer></script>
+<script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page">
 
@@ -550,5 +551,15 @@ function goToChat() {
 
 </script>
 <datalist id="persona-options"><option value="Chill and friendly"><option value="Crazy"><option value="Sarcastic"><option value="Warm and encouraging"></datalist>
+<footer id="build-stamp" aria-hidden="true"></footer>
+<script>
+  // Runs after deferred build-info.js has executed, so window.BUILD_INFO is set.
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('build-stamp');
+    var info = window.BUILD_INFO;
+    if (!el || !info) return;
+    el.textContent = 'build ' + info.time + ' · ' + info.sha;
+  });
+</script>
 </body>
 </html>
