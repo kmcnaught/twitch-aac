@@ -7,69 +7,86 @@
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js" defer></script>
+<script src="profiles.js" defer></script>
 </head>
-<body>
+<body class="profiles-page">
 
 <!-- ═══════════════ SETUP PAGE ═══════════════ -->
 <div id="compact-view">
 
   <header>
-    <div class="logo">StreamAAC</div>
+    <div class="brand"><div class="logo">StreamAAC</div><div class="tagline">Chat. Stream. Be You.</div></div>
     <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
     <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
   </header>
 
+  <div class="profiles-layout">
+    <nav class="profiles-nav" aria-label="Main navigation">
+      <a class="nav-item" href="index.html">⌂ <span>Home</span></a>
+      <a class="nav-item selected" href="#profiles-heading" aria-current="page">♙ <span>Profiles</span></a>
+      <button class="nav-item" onclick="openVoiceModal()">⚙ <span>Voice settings</span></button>
+      <a class="nav-item" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
+    </nav>
+    <main class="profiles-main">
+      <div class="profiles-heading"><div><h1 id="profiles-heading">Profiles</h1><p>Save different setups for different games, moods or streams.</p></div><button class="primary" id="new-profile-btn">＋ New profile</button></div>
+      <div id="profile-cards" class="profile-cards" aria-label="Saved profiles"></div>
+      <section class="profile-settings" aria-labelledby="profile-settings-heading">
+      <div class="settings-heading"><h2 id="profile-settings-heading">Profile settings</h2><button class="hbtn" id="duplicate-profile-btn">▢ Save as new profile</button></div>
+      <p id="profile-status" role="status" aria-live="polite"></p>
   <div id="setup-panel">
     <div id="setup-inner">
+      <div class="row"><label for="profile-name">♙ <span>Profile name</span></label><div class="input-wrap"><input type="text" id="profile-name" maxlength="80" placeholder="Name your profile" required></div></div>
+      <div class="row"><label for="profile-description">✎ <span>Description</span></label><div class="input-wrap"><input type="text" id="profile-description" maxlength="160" placeholder="What is this setup for?"></div></div>
       <div class="row">
+        <label for="channel-input">◈ <span>Twitch channel</span></label>
         <div class="input-wrap">
           <input type="text" id="channel-input" placeholder="twitch channel" autocapitalize="none" autocorrect="off" spellcheck="false"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label for="handle-input">your handle</label>
+        <label for="handle-input">♙ Your handle</label>
         <div class="input-wrap">
           <input type="text" id="handle-input" placeholder="your twitch username" autocapitalize="none" autocorrect="off" spellcheck="false"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label for="persona-input">persona</label>
+        <label for="persona-input">♟ Persona</label>
         <div class="input-wrap">
-          <input type="text" id="persona-input" placeholder="e.g. chill FPS streamer, sarcastic"/>
+          <input type="text" id="persona-input" list="persona-options" placeholder="e.g. chill FPS streamer, sarcastic"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label for="ctx-input">context</label>
+        <label for="ctx-input">☏ Context</label>
         <div class="input-wrap">
           <input type="text" id="ctx-input" placeholder="e.g. just got a 10 kill streak"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label for="bots-input">ignore bots</label>
+        <label for="bots-input">♧ Ignore bots</label>
         <div class="input-wrap">
           <input type="text" id="bots-input" placeholder="e.g. Nightbot, StreamElements" autocapitalize="none" autocorrect="off" spellcheck="false"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label for="yt-channel-input">youtube live</label>
+        <label for="yt-channel-input">▶ YouTube live</label>
         <div class="input-wrap">
           <input type="text" id="yt-channel-input" placeholder="https://youtube.com/watch?v=... (optional)" autocapitalize="none" autocorrect="off" spellcheck="false"/>
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
       <div class="row">
-        <label>send chat</label>
+        <label>▤ Send chat</label>
         <button class="hbtn" id="twitch-auth-btn" onclick="startTwitchAuth()">connect twitch</button>
         <button class="hbtn" id="twitch-disconnect-btn" onclick="disconnectTwitch()" style="display:none">disconnect</button>
         <span id="twitch-auth-status" style="font-size:13px;color:var(--muted);margin-left:8px"></span>
       </div>
       <div class="row">
-        <label for="game-select">game</label>
+        <label for="game-select">♧ Game</label>
         <select id="game-select">
           <option value="">— not specified —</option>
           <option value="Just Chatting">Just Chatting</option>
@@ -92,9 +109,12 @@
     </div>
   </div>
   <div id="start-bar">
-    <button class="btn-connect" id="start-btn" onclick="goToChat()">start</button>
+    <button class="btn-connect" id="start-btn" onclick="goToChat()">▶ Start StreamAAC</button>
   </div>
 
+      </section>
+    </main>
+  </div>
   <!-- ═══════════════ VOICE MODAL ═══════════════ -->
   <div class="modal-overlay" id="voice-modal" onclick="handleModalClick(event)">
     <div class="modal-dialog">
@@ -485,6 +505,7 @@ async function validateTwitchToken(token) {
     // OAuth login is authoritative for the handle — overwrite whatever was set manually
     localStorage.setItem('twitch_handle', data.login);
     document.getElementById('handle-input').value = data.login;
+    saveActiveProfile();
   } catch(e) {
     setTwitchAuthStatus('could not verify token', 'err');
   } finally {
@@ -523,9 +544,11 @@ function goToChat() {
   const gameVal = document.getElementById('game-select').value;
   localStorage.setItem('game', gameVal);
   localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
+  saveActiveProfile();
   window.location.href = 'chat.html';
 }
 
 </script>
+<datalist id="persona-options"><option value="Chill and friendly"><option value="Crazy"><option value="Sarcastic"><option value="Warm and encouraging"></datalist>
 </body>
 </html>
