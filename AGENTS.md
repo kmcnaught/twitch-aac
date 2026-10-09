@@ -61,6 +61,13 @@ redirect URI.
 Check git status before editing and preserve unrelated changes. Use the existing
 checkout in isolated cloud tasks; do not create a Git worktree unless requested.
 
+Make atomic commits: each commit should contain one coherent change. Keep
+unrelated changes in separate commits.
+
+Comment sparingly, explaining non-obvious intent or constraints rather than
+restating the code. Comments should describe the final behaviour and design,
+not the implementation journey or abandoned approaches.
+
 ## Collaboration and communication
 
 - For substantial work, give a short plan before starting. Ask questions early
