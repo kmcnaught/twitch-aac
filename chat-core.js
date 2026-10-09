@@ -77,6 +77,16 @@ function parseIrcMsg(raw) {
 }
 
 // ── SPEECH ──
+const EL_VOICE_DEFAULTS = { stability: 0.5, similarity_boost: 0.75, style: 0 };
+
+function getElVoiceSetting(setting) {
+  const saved = localStorage.getItem('el_' + setting);
+  const value = saved === null || saved.trim() === '' ? NaN : Number(saved);
+  return Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : EL_VOICE_DEFAULTS[setting];
+}
+
 function speakBrowser(text, card) {
   const u = new SpeechSynthesisUtterance(text);
   const savedVoiceName = localStorage.getItem('browser_voice') || '';
@@ -105,7 +115,12 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
       body: JSON.stringify({
         text,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: parseFloat(localStorage.getItem('el_speed') || '1.0') }
+        voice_settings: {
+          stability: getElVoiceSetting('stability'),
+          similarity_boost: getElVoiceSetting('similarity_boost'),
+          style: getElVoiceSetting('style'),
+          speed: parseFloat(localStorage.getItem('el_speed') || '1.0')
+        }
       })
     });
     if (token !== elSpeakToken) return;  // superseded by a newer call
