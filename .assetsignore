@@ -1,0 +1,7 @@
+# Only publish the application's static files from the repository root.
+/*
+!/index.html
+!/chat.html
+!/styles.css
+!/chat-core.js
+!/sample-phrases.js
