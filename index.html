@@ -192,6 +192,33 @@
             <button class="spill" onclick="stepElSpeed(1)" aria-label="increase speed">+</button>
           </div>
         </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-stability-title" aria-describedby="el-stability-help">
+          <span id="el-stability-title">stability</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-stability-decrease" onclick="stepElVoiceSetting('stability', -1)" aria-label="Decrease stability">−</button>
+            <span id="el-stability-label" aria-live="polite">50%</span>
+            <button class="spill" id="el-stability-increase" onclick="stepElVoiceSetting('stability', 1)" aria-label="Increase stability">+</button>
+          </div>
+          <p id="el-stability-help">Lower: more expressive. Higher: more consistent.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-similarity_boost-title" aria-describedby="el-similarity_boost-help">
+          <span id="el-similarity_boost-title">similarity</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-similarity_boost-decrease" onclick="stepElVoiceSetting('similarity_boost', -1)" aria-label="Decrease similarity">−</button>
+            <span id="el-similarity_boost-label" aria-live="polite">75%</span>
+            <button class="spill" id="el-similarity_boost-increase" onclick="stepElVoiceSetting('similarity_boost', 1)" aria-label="Increase similarity">+</button>
+          </div>
+          <p id="el-similarity_boost-help">Higher: closer to the original voice.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-style-title" aria-describedby="el-style-help">
+          <span id="el-style-title">style exaggeration</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-style-decrease" onclick="stepElVoiceSetting('style', -1)" aria-label="Decrease style exaggeration">−</button>
+            <span id="el-style-label" aria-live="polite">0%</span>
+            <button class="spill" id="el-style-increase" onclick="stepElVoiceSetting('style', 1)" aria-label="Increase style exaggeration">+</button>
+          </div>
+          <p id="el-style-help">Higher: amplifies the voice’s style. May take longer to speak.</p>
+        </div>
         <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
       </div>
 
@@ -299,6 +326,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // ElevenLabs speed
   const savedSpeed = localStorage.getItem('el_speed') || '1.0';
   document.getElementById('el-speed-label').textContent = parseFloat(savedSpeed).toFixed(2) + '×';
+  Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
@@ -464,6 +492,20 @@ function saveBrowserVoice() {
 }
 
 // ── ELEVENLABS SPEED ──
+function renderElVoiceSetting(setting) {
+  const value = getElVoiceSetting(setting);
+  document.getElementById('el-' + setting + '-label').textContent = Math.round(value * 100) + '%';
+  document.getElementById('el-' + setting + '-decrease').disabled = value <= 0;
+  document.getElementById('el-' + setting + '-increase').disabled = value >= 1;
+}
+
+function stepElVoiceSetting(setting, dir) {
+  const percent = Math.round(getElVoiceSetting(setting) * 100);
+  const next = Math.max(0, Math.min(100, percent + dir * 5));
+  localStorage.setItem('el_' + setting, String(next / 100));
+  renderElVoiceSetting(setting);
+}
+
 const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
 function stepElSpeed(dir) {
   const current = parseFloat(localStorage.getItem('el_speed') || '1.0');

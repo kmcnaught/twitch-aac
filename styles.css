@@ -530,6 +530,14 @@
   .voice-status.err { color: var(--accent2); }
 
   .speed-stepper { display: flex; align-items: center; gap: 10px; }
+  .el-tuning-setting { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 20px 0; }
+  .el-tuning-setting > span { color: var(--muted); font-size: 15px; flex: 1 0 100px; }
+  .el-tuning-setting p { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .el-setting-stepper { display: flex; align-items: center; gap: 10px; }
+  .el-setting-stepper span { min-width: 4ch; text-align: center; font-family: 'DM Mono', monospace; font-size: 15px; }
+  .el-setting-stepper button { min-width: 44px; min-height: 44px; }
+  .el-setting-stepper button:disabled { opacity: 0.4; cursor: default; }
+  .el-setting-stepper button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .speed-stepper #el-speed-label { min-width: 3.5ch; text-align: center; font-family: 'DM Mono', monospace; font-size: 15px; }
   .gender-pills { display: flex; gap: 7px; }
   .gpill {
