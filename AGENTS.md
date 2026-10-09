@@ -13,6 +13,7 @@ to the product.
 - `index.html`: setup, preferences, voice configuration, and Twitch login.
 - `chat.html`: live chat, suggestions, phrase management, and the main interface.
 - `chat-core.js`: shared chat, emote, speech, and helper functions.
+- `profiles.js`: saved stream profiles, switching, and setup persistence.
 - `sample-phrases.js`: starter phrases, seeded only when none are saved.
 - `styles.css`: shared styles and light/dark themes.
 
@@ -95,9 +96,16 @@ not the implementation journey or abandoned approaches.
 
 ## Review and deployment
 
+- Before committing, spawn a subagent to review the changes and fix any obvious
+  issues. Address the review findings before creating the commit.
+- When the work is finished, commit and push the changes to a feature branch,
+  then share a link the user can open to create a pull request.
+- Before changing deployment workflows or `wrangler.jsonc`, explicitly flag the
+  proposed changes to the user.
+
 Use a branch and PR for review. Cloudflare Workers is connected through its
 dashboard. `wrangler.jsonc` defines the `twitch-aac` static-assets Worker and its
-preview configuration. `.assetsignore` limits publishing to the five application
+preview configuration. `.assetsignore` limits publishing to the application
 files; update it if adding a new public asset. Verify the deployment check and
 actual preview URL for each PR rather than assuming a preview succeeded.
 No application build command is needed. Production uses `npx wrangler deploy`;
