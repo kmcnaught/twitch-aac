@@ -6,7 +6,7 @@
 <title>StreamAAC</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=voice-tuning-1" defer></script>
+<script src="chat-core.js?v=voice-model-1" defer></script>
 <script src="profiles.js" defer></script>
 <script src="build-info.js" defer></script>
 </head>
@@ -184,6 +184,15 @@
             <option value="">— select a voice —</option>
           </select>
         </div>
+        <div class="voice-row">
+          <label for="el-model-select">model</label>
+          <select id="el-model-select" onchange="saveElModel()" aria-describedby="el-model-help">
+            <option value="eleven_turbo_v2_5">Turbo v2.5</option>
+            <option value="eleven_multilingual_v2">Multilingual v2</option>
+            <option value="eleven_flash_v2_5">Flash v2.5</option>
+          </select>
+          <p class="voice-help" id="el-model-help">Try Multilingual v2 to compare with TD Snap. It may take longer to speak and use more credits.</p>
+        </div>
         <div class="voice-row" id="speed-row">
           <label>speed</label>
           <div class="speed-stepper">
@@ -327,6 +336,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedSpeed = localStorage.getItem('el_speed') || '1.0';
   document.getElementById('el-speed-label').textContent = parseFloat(savedSpeed).toFixed(2) + '×';
   Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
+  restoreElModel();
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
@@ -462,6 +472,15 @@ function renderElVoices(selectedId) {
 
 function saveVoiceChoice() {
   localStorage.setItem('el_voice_id', document.getElementById('voice-select').value);
+}
+
+function restoreElModel() {
+  document.getElementById('el-model-select').value = getElModel();
+}
+
+function saveElModel() {
+  localStorage.setItem('el_model', document.getElementById('el-model-select').value);
+  restoreElModel();
 }
 
 function saveLangChoice() {

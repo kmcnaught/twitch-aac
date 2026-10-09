@@ -484,6 +484,7 @@
 
   .voice-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .voice-row:last-child { margin-bottom: 0; }
+  .voice-help { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
   .voice-row label { font-size: 15px; color: var(--muted); white-space: nowrap; flex-shrink: 0; min-width: 84px; }
 
   .modal-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }

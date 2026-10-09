@@ -53,6 +53,34 @@ test('defaults preserve existing voice behaviour and zero style', async () => {
   assert.deepEqual(app.request().body.voice_settings, {
     stability: 0.5, similarity_boost: 0.75, style: 0, speed: 1
   });
+  assert.equal(app.request().body.model_id, 'eleven_turbo_v2_5');
+});
+
+test('each model choice persists, restores, and is sent with saved voice settings', async () => {
+  for (const model of ['eleven_turbo_v2_5', 'eleven_multilingual_v2', 'eleven_flash_v2_5']) {
+    const app = setup({ el_stability: '0.6', el_similarity_boost: '0.8', el_style: '0.2', el_speed: '0.95' });
+    app.context.document.getElementById('el-model-select').value = model;
+    app.context.saveElModel();
+    assert.equal(app.storage.get('el_model'), model);
+    const reloaded = setup(Object.fromEntries(app.storage));
+    reloaded.context.restoreElModel();
+    assert.equal(reloaded.elements.get('el-model-select').value, model);
+    await reloaded.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    assert.equal(reloaded.request().body.model_id, model);
+    assert.deepEqual(reloaded.request().body.voice_settings, {
+      stability: 0.6, similarity_boost: 0.8, style: 0.2, speed: 0.95
+    });
+  }
+});
+
+test('missing or unsupported model choices restore and send the existing default', async () => {
+  for (const saved of [undefined, '', 'unknown-model', 'eleven_v3']) {
+    const app = setup(saved === undefined ? {} : { el_model: saved });
+    app.context.restoreElModel();
+    assert.equal(app.elements.get('el-model-select').value, 'eleven_turbo_v2_5');
+    await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    assert.equal(app.request().body.model_id, 'eleven_turbo_v2_5');
+  }
 });
 
 test('saved settings, including zero, are used in speech requests', async () => {
