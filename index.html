@@ -6,7 +6,7 @@
 <title>StreamAAC</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=voice-model-1" defer></script>
+<script src="chat-core.js?v=voice-playback-speed-1" defer></script>
 <script src="profiles.js" defer></script>
 <script src="build-info.js" defer></script>
 </head>
@@ -193,6 +193,14 @@
           </select>
           <p class="voice-help" id="el-model-help">Try Multilingual v2 to compare with TD Snap. It may take longer to speak and use more credits.</p>
         </div>
+        <div class="voice-row">
+          <label for="el-speed-mode-select">speed method</label>
+          <select id="el-speed-mode-select" onchange="saveElSpeedMode()" aria-describedby="el-speed-mode-help">
+            <option value="generation">ElevenLabs</option>
+            <option value="playback">Playback</option>
+          </select>
+          <p class="voice-help" id="el-speed-mode-help">ElevenLabs speed changes how the voice is generated. Playback changes the speed of normal-speed audio while preserving pitch.</p>
+        </div>
         <div class="voice-row" id="speed-row">
           <label>speed</label>
           <div class="speed-stepper">
@@ -333,10 +341,10 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // ElevenLabs speed
-  const savedSpeed = localStorage.getItem('el_speed') || '1.0';
-  document.getElementById('el-speed-label').textContent = parseFloat(savedSpeed).toFixed(2) + '×';
+  document.getElementById('el-speed-label').textContent = getElSpeed().toFixed(2) + '×';
   Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
   restoreElModel();
+  restoreElSpeedMode();
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
@@ -483,6 +491,15 @@ function saveElModel() {
   restoreElModel();
 }
 
+function restoreElSpeedMode() {
+  document.getElementById('el-speed-mode-select').value = getElSpeedMode();
+}
+
+function saveElSpeedMode() {
+  localStorage.setItem('el_speed_mode', document.getElementById('el-speed-mode-select').value);
+  restoreElSpeedMode();
+}
+
 function saveLangChoice() {
   localStorage.setItem('voice_lang', document.getElementById('lang-select').value);
   populateBrowserVoices();
@@ -528,7 +545,7 @@ function stepElVoiceSetting(setting, dir) {
 
 const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
 function stepElSpeed(dir) {
-  const current = parseFloat(localStorage.getItem('el_speed') || '1.0');
+  const current = getElSpeed();
   const idx = EL_SPEED_STEPS.findIndex(s => Math.abs(s - current) < 0.001);
   const next = EL_SPEED_STEPS[Math.max(0, Math.min(EL_SPEED_STEPS.length - 1, (idx === -1 ? 6 : idx) + dir))];
   const val = next.toFixed(2);
