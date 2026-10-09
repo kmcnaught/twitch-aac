@@ -18,10 +18,13 @@ test('setup and chat load the same versioned voice script instead of the cached 
   assert.match(scripts[0], /^chat-core\.js\?v=.+$/);
 });
 
-function setup(saved = {}) {
+function setup(saved = {}, options = {}) {
   const storage = new Map(Object.entries(saved));
   const elements = new Map();
   let request;
+  let source;
+  let audio;
+  const revoked = [];
   const context = vm.createContext({
     localStorage: {
       getItem: key => storage.get(key) ?? null,
@@ -31,20 +34,41 @@ function setup(saved = {}) {
       if (!elements.has(id)) elements.set(id, {});
       return elements.get(id);
     } },
-    window: { addEventListener() {} },
+    window: { addEventListener() {}, speechSynthesis: { cancel() {} } },
     console,
+    Blob,
+    URL: { createObjectURL: () => 'blob:test-audio', revokeObjectURL: url => revoked.push(url) },
+    Audio: class {
+      constructor(url) { this.src = url; audio = this; }
+      async play() {
+        if (options.onPlay) options.onPlay();
+        if (options.waitPlay) await options.waitPlay;
+        if (options.rejectPlayback) throw new Error('Playback rejected');
+      }
+      pause() { this.paused = true; }
+      removeAttribute(name) { if (name === 'src') this.src = ''; }
+      load() {}
+    },
     AudioContext: class {
       state = 'running';
       async decodeAudioData() { return {}; }
-      createBufferSource() { return { connect() {}, start() {} }; }
+      createBufferSource() {
+        source = { playbackRate: { value: 1 }, connect() {}, start() {} };
+        return source;
+      }
+      createMediaElementSource() {
+        source = { connect() {}, disconnect() { this.disconnected = true; } };
+        return source;
+      }
     },
-    fetch: async (url, options) => {
-      request = { url, body: JSON.parse(options.body) };
-      return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
+    fetch: async (url, requestOptions) => {
+      request = { url, body: JSON.parse(requestOptions.body) };
+      if (options.waitFetch) await options.waitFetch;
+      return { ok: true, headers: { get: () => 'audio/mpeg' }, arrayBuffer: async () => new ArrayBuffer(0) };
     }
   });
   vm.runInContext(core + '\n' + settings, context);
-  return { context, storage, elements, request: () => request };
+  return { context, storage, elements, revoked, request: () => request, source: () => source, audio: () => audio };
 }
 
 test('defaults preserve existing voice behaviour and zero style', async () => {
@@ -54,6 +78,108 @@ test('defaults preserve existing voice behaviour and zero style', async () => {
     stability: 0.5, similarity_boost: 0.75, style: 0, speed: 1
   });
   assert.equal(app.request().body.model_id, 'eleven_turbo_v2_5');
+  assert.equal(app.source().playbackRate.value, 1);
+});
+
+test('playback mode generates at normal speed then plays at the saved rate without double slowing', async () => {
+  for (const rate of [0.7, 1, 1.2]) {
+    const app = setup({ el_speed: String(rate), el_model: 'eleven_multilingual_v2' });
+    app.context.document.getElementById('el-speed-mode-select').value = 'playback';
+    app.context.saveElSpeedMode();
+    const reloaded = setup(Object.fromEntries(app.storage));
+    reloaded.context.restoreElSpeedMode();
+    assert.equal(reloaded.elements.get('el-speed-mode-select').value, 'playback');
+    await reloaded.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    assert.equal(reloaded.request().body.voice_settings.speed, 1);
+    assert.equal(reloaded.audio().playbackRate, rate);
+    assert.equal(reloaded.audio().preservesPitch, true);
+    assert.equal(reloaded.request().body.model_id, 'eleven_multilingual_v2');
+  }
+});
+
+test('playback audio resources are released on completion and interruption', async () => {
+  for (const action of ['finish', 'interrupt']) {
+    const app = setup({ el_speed_mode: 'playback', el_speed: '0.7' });
+    await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    if (action === 'finish') app.audio().onended();
+    else await app.context.speakElevenLabs('Another test phrase', 'test-key', 'test-voice', null);
+    assert.deepEqual(app.revoked, ['blob:test-audio']);
+    if (action === 'finish') {
+      assert.equal(app.audio().paused, true);
+      assert.equal(app.audio().src, '');
+      assert.equal(app.source().disconnected, true);
+    }
+  }
+});
+
+test('rejected playback releases audio resources and reports an error', async () => {
+  const app = setup({ el_speed_mode: 'playback' }, { rejectPlayback: true });
+  const errors = [];
+  await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null, message => errors.push(message));
+  assert.deepEqual(app.revoked, ['blob:test-audio']);
+  assert.equal(app.source().disconnected, true);
+  assert.deepEqual(errors, ['Playback rejected']);
+});
+
+test('Stop prevents pending speech from starting in either speed method', async () => {
+  for (const mode of ['playback', 'generation']) {
+    let releaseFetch;
+    const waitFetch = new Promise(resolve => releaseFetch = resolve);
+    const app = setup({ el_speed_mode: mode }, { waitFetch });
+    const pending = app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    app.context.stopSpeak();
+    releaseFetch();
+    await pending;
+    assert.equal(app.audio(), undefined);
+    assert.equal(app.source(), undefined);
+  }
+});
+
+test('Stop releases pending playback without reporting intentional cancellation as an error', async () => {
+  let rejectPlay, notifyPlay;
+  const waitPlay = new Promise((resolve, reject) => rejectPlay = reject);
+  const playing = new Promise(resolve => notifyPlay = resolve);
+  const app = setup({ el_speed_mode: 'playback' }, { waitPlay, onPlay: notifyPlay });
+  const errors = [];
+  const pending = app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null, message => errors.push(message));
+  await playing;
+  app.context.stopSpeak();
+  rejectPlay(new Error('Playback cancelled'));
+  await pending;
+  assert.deepEqual(errors, []);
+  assert.deepEqual(app.revoked, ['blob:test-audio']);
+  assert.equal(app.source().disconnected, true);
+});
+
+test('generation mode and invalid modes retain ElevenLabs speed with normal playback', async () => {
+  for (const mode of [undefined, 'generation', 'invalid']) {
+    const saved = { el_speed: '0.7' };
+    if (mode !== undefined) saved.el_speed_mode = mode;
+    const app = setup(saved);
+    app.context.restoreElSpeedMode();
+    assert.equal(app.elements.get('el-speed-mode-select').value, 'generation');
+    await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+    assert.equal(app.request().body.voice_settings.speed, 0.7);
+    assert.equal(app.source().playbackRate.value, 1);
+  }
+});
+
+test('switching speed methods preserves the saved speed and supports switching back', async () => {
+  const app = setup({ el_speed_mode: 'playback', el_speed: '0.7' });
+  app.context.document.getElementById('el-speed-mode-select').value = 'generation';
+  app.context.saveElSpeedMode();
+  assert.equal(app.storage.get('el_speed'), '0.7');
+  await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+  assert.equal(app.request().body.voice_settings.speed, 0.7);
+  assert.equal(app.source().playbackRate.value, 1);
+});
+
+test('invalid speeds default safely and out-of-range speeds are bounded for playback', () => {
+  for (const saved of ['', ' ', 'invalid', 'Infinity']) {
+    assert.equal(setup({ el_speed: saved }).context.getElSpeed(), 1);
+  }
+  assert.equal(setup({ el_speed: '0' }).context.getElSpeed(), 0.7);
+  assert.equal(setup({ el_speed: '2' }).context.getElSpeed(), 1.2);
 });
 
 test('each model choice persists, restores, and is sent with saved voice settings', async () => {
