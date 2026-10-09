@@ -1,2 +1,5 @@
 # Local Wrangler build output and state.
 .wrangler/
+
+# Generated at deploy time by scripts/stamp.sh.
+/build-info.js

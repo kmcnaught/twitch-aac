@@ -1,6 +1,9 @@
 {
   "name": "twitch-aac",
   "compatibility_date": "2025-04-01",
+  "build": {
+    "command": "bash scripts/stamp.sh"
+  },
   "assets": {
     "directory": "."
   },

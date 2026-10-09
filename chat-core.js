@@ -77,6 +77,69 @@ function parseIrcMsg(raw) {
 }
 
 // ── SPEECH ──
+const EL_VOICE_DEFAULTS = { stability: 0.5, similarity_boost: 0.75, style: 0 };
+const EL_MODEL_IDS = ['eleven_turbo_v2_5', 'eleven_multilingual_v2', 'eleven_flash_v2_5'];
+
+function getElModel() {
+  const saved = localStorage.getItem('el_model');
+  return EL_MODEL_IDS.includes(saved) ? saved : EL_MODEL_IDS[0];
+}
+
+function getElSpeedMode() {
+  return localStorage.getItem('el_speed_mode') === 'playback' ? 'playback' : 'generation';
+}
+
+function getElSpeed() {
+  const saved = localStorage.getItem('el_speed');
+  const speed = saved === null || saved.trim() === '' ? NaN : Number(saved);
+  return Number.isFinite(speed) ? Math.max(0.7, Math.min(1.2, speed)) : 1;
+}
+
+function getElVoiceSetting(setting) {
+  const saved = localStorage.getItem('el_' + setting);
+  const value = saved === null || saved.trim() === '' ? NaN : Number(saved);
+  return Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : EL_VOICE_DEFAULTS[setting];
+}
+
+async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, contentType) {
+  const url = URL.createObjectURL(new Blob([arrayBuffer], { type: contentType }));
+  let audio, released = false, started = false;
+  const playback = { pause: release };
+  function release() {
+    if (released) return;
+    released = true;
+    if (audio) {
+      audio.onended = audio.onerror = null;
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    URL.revokeObjectURL(url);
+    if (elAudio === playback) elAudio = null;
+  }
+  try {
+    audio = new Audio(url);
+    audio.playbackRate = speed;
+    audio.preservesPitch = true;
+    audio.onended = () => { release(); if (token === elSpeakToken) clearSpeak(card); };
+    audio.onerror = () => {
+      release();
+      if (started && token === elSpeakToken) {
+        clearSpeak(card);
+        if (onError) onError('Audio playback failed');
+      }
+    };
+    elAudio = playback;
+    await audio.play();
+    started = true;
+  } catch (e) {
+    release();
+    throw e;
+  }
+}
+
 function speakBrowser(text, card) {
   const u = new SpeechSynthesisUtterance(text);
   const savedVoiceName = localStorage.getItem('browser_voice') || '';
@@ -94,23 +157,36 @@ function speakBrowser(text, card) {
 async function speakElevenLabs(text, key, voiceId, card, onError) {
   if (elAudio) { elAudio.pause(); elAudio = null; }
   const token = ++elSpeakToken;
-  // Create/resume AudioContext before the fetch so Firefox's audio pipeline
-  // warms up during the network round-trip, avoiding start-of-audio cutoff
-  if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
-  if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
+  const speed = getElSpeed();
+  const playbackSpeed = getElSpeedMode() === 'playback';
+  if (!playbackSpeed) {
+    // Warm up Web Audio during the fetch to avoid Firefox cutting off speech.
+    if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
+    if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
+  }
   try {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text,
-        model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: parseFloat(localStorage.getItem('el_speed') || '1.0') }
+        model_id: getElModel(),
+        voice_settings: {
+          stability: getElVoiceSetting('stability'),
+          similarity_boost: getElVoiceSetting('similarity_boost'),
+          style: getElVoiceSetting('style'),
+          speed: playbackSpeed ? 1 : speed
+        }
       })
     });
     if (token !== elSpeakToken) return;  // superseded by a newer call
     if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
     const arrayBuffer = await r.arrayBuffer();
+    if (token !== elSpeakToken) return;
+    if (playbackSpeed) {
+      await playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, r.headers.get('Content-Type') || 'audio/mpeg');
+      return;
+    }
     let audioBuffer;
     try {
       audioBuffer = await elAudioCtx.decodeAudioData(arrayBuffer);
@@ -133,6 +209,7 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
 }
 
 function stopSpeak() {
+  ++elSpeakToken;
   window.speechSynthesis.cancel();
   if (elAudio) { elAudio.pause(); elAudio = null; }
   if (speakingCard) clearSpeak(speakingCard);

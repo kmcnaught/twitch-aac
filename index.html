@@ -6,8 +6,9 @@
 <title>StreamAAC</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js" defer></script>
+<script src="chat-core.js?v=voice-direct-playback-1" defer></script>
 <script src="profiles.js" defer></script>
+<script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page">
 
@@ -185,6 +186,23 @@
             <option value="">— select a voice —</option>
           </select>
         </div>
+        <div class="voice-row">
+          <label for="el-model-select">model</label>
+          <select id="el-model-select" onchange="saveElModel()" aria-describedby="el-model-help">
+            <option value="eleven_turbo_v2_5">Turbo v2.5</option>
+            <option value="eleven_multilingual_v2">Multilingual v2</option>
+            <option value="eleven_flash_v2_5">Flash v2.5</option>
+          </select>
+          <p class="voice-help" id="el-model-help">Try Multilingual v2 to compare with TD Snap. It may take longer to speak and use more credits.</p>
+        </div>
+        <div class="voice-row">
+          <label for="el-speed-mode-select">speed method</label>
+          <select id="el-speed-mode-select" onchange="saveElSpeedMode()" aria-describedby="el-speed-mode-help">
+            <option value="generation">ElevenLabs</option>
+            <option value="playback">Playback</option>
+          </select>
+          <p class="voice-help" id="el-speed-mode-help">ElevenLabs speed changes how the voice is generated. Playback changes the speed of normal-speed audio while preserving pitch.</p>
+        </div>
         <div class="voice-row" id="speed-row">
           <label>speed</label>
           <div class="speed-stepper">
@@ -192,6 +210,33 @@
             <span id="el-speed-label" aria-live="polite">1.0×</span>
             <button class="spill" onclick="stepElSpeed(1)" aria-label="increase speed">+</button>
           </div>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-stability-title" aria-describedby="el-stability-help">
+          <span id="el-stability-title">stability</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-stability-decrease" onclick="stepElVoiceSetting('stability', -1)" aria-label="Decrease stability">−</button>
+            <span id="el-stability-label" aria-live="polite">50%</span>
+            <button class="spill" id="el-stability-increase" onclick="stepElVoiceSetting('stability', 1)" aria-label="Increase stability">+</button>
+          </div>
+          <p id="el-stability-help">Lower: more expressive. Higher: more consistent.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-similarity_boost-title" aria-describedby="el-similarity_boost-help">
+          <span id="el-similarity_boost-title">similarity</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-similarity_boost-decrease" onclick="stepElVoiceSetting('similarity_boost', -1)" aria-label="Decrease similarity">−</button>
+            <span id="el-similarity_boost-label" aria-live="polite">75%</span>
+            <button class="spill" id="el-similarity_boost-increase" onclick="stepElVoiceSetting('similarity_boost', 1)" aria-label="Increase similarity">+</button>
+          </div>
+          <p id="el-similarity_boost-help">Higher: closer to the original voice.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-style-title" aria-describedby="el-style-help">
+          <span id="el-style-title">style exaggeration</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-style-decrease" onclick="stepElVoiceSetting('style', -1)" aria-label="Decrease style exaggeration">−</button>
+            <span id="el-style-label" aria-live="polite">0%</span>
+            <button class="spill" id="el-style-increase" onclick="stepElVoiceSetting('style', 1)" aria-label="Increase style exaggeration">+</button>
+          </div>
+          <p id="el-style-help">Higher: amplifies the voice’s style. May take longer to speak.</p>
         </div>
         <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
       </div>
@@ -298,8 +343,10 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // ElevenLabs speed
-  const savedSpeed = localStorage.getItem('el_speed') || '1.0';
-  document.getElementById('el-speed-label').textContent = parseFloat(savedSpeed).toFixed(2) + '×';
+  document.getElementById('el-speed-label').textContent = getElSpeed().toFixed(2) + '×';
+  Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
+  restoreElModel();
+  restoreElSpeedMode();
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
@@ -437,6 +484,24 @@ function saveVoiceChoice() {
   localStorage.setItem('el_voice_id', document.getElementById('voice-select').value);
 }
 
+function restoreElModel() {
+  document.getElementById('el-model-select').value = getElModel();
+}
+
+function saveElModel() {
+  localStorage.setItem('el_model', document.getElementById('el-model-select').value);
+  restoreElModel();
+}
+
+function restoreElSpeedMode() {
+  document.getElementById('el-speed-mode-select').value = getElSpeedMode();
+}
+
+function saveElSpeedMode() {
+  localStorage.setItem('el_speed_mode', document.getElementById('el-speed-mode-select').value);
+  restoreElSpeedMode();
+}
+
 function saveLangChoice() {
   localStorage.setItem('voice_lang', document.getElementById('lang-select').value);
   populateBrowserVoices();
@@ -465,9 +530,24 @@ function saveBrowserVoice() {
 }
 
 // ── ELEVENLABS SPEED ──
+function renderElVoiceSetting(setting) {
+  const value = getElVoiceSetting(setting);
+  document.getElementById('el-' + setting + '-label').textContent = Math.round(value * 100) + '%';
+  document.getElementById('el-' + setting + '-decrease').disabled = value <= 0;
+  document.getElementById('el-' + setting + '-increase').disabled = value >= 1;
+}
+
+function stepElVoiceSetting(setting, dir) {
+  const percent = Math.round(getElVoiceSetting(setting) * 100);
+  const step = setting === 'style' ? 1 : 5;
+  const next = Math.max(0, Math.min(100, percent + dir * step));
+  localStorage.setItem('el_' + setting, String(next / 100));
+  renderElVoiceSetting(setting);
+}
+
 const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
 function stepElSpeed(dir) {
-  const current = parseFloat(localStorage.getItem('el_speed') || '1.0');
+  const current = getElSpeed();
   const idx = EL_SPEED_STEPS.findIndex(s => Math.abs(s - current) < 0.001);
   const next = EL_SPEED_STEPS[Math.max(0, Math.min(EL_SPEED_STEPS.length - 1, (idx === -1 ? 6 : idx) + dir))];
   const val = next.toFixed(2);
@@ -552,5 +632,15 @@ function goToChat() {
 
 </script>
 <datalist id="persona-options"><option value="Chill and friendly"><option value="Crazy"><option value="Sarcastic"><option value="Warm and encouraging"></datalist>
+<footer id="build-stamp" aria-hidden="true"></footer>
+<script>
+  // Runs after deferred build-info.js has executed, so window.BUILD_INFO is set.
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('build-stamp');
+    var info = window.BUILD_INFO;
+    if (!el || !info) return;
+    el.textContent = 'build ' + info.time + ' · ' + info.sha;
+  });
+</script>
 </body>
 </html>
