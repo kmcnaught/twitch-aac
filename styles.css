@@ -806,15 +806,15 @@
 .profiles-heading h1 { font-size: 26px; margin-bottom: 6px; }
 .profiles-heading p { color: var(--muted); font-size: 17px; }
 .primary, .profiles-page .btn-connect { background: linear-gradient(120deg, #7048ff, #9840f5); color: white; padding: 14px 24px; border: 0; border-radius: 13px; font: inherit; font-weight: 600; cursor: pointer; }
-.profile-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 16px; margin: 20px 0; }
-.profile-card { position: relative; border: 1px solid var(--border-ui); border-radius: 18px; background: var(--surface); min-height: 192px; }
+.profile-cards { display: grid; grid-template-columns: repeat(auto-fill, 180px); justify-content: start; gap: 16px; margin: 20px 0; }
+.profile-card { position: relative; border: 1px solid var(--border-ui); border-radius: 18px; background: var(--surface); width: 180px; height: 180px; min-width: 0; }
 .profile-card.active { border: 3px solid #bd74f5; background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
-.profile-choose { text-align: left; border: 0; background: none; color: var(--text); padding: 22px 20px; width: 100%; height: 100%; cursor: pointer; font: inherit; }
-.profile-icon { display: block; font-size: 43px; margin-bottom: 18px; }
-.profile-choose strong { display: block; font-size: 19px; margin-bottom: 8px; overflow-wrap: anywhere; }
-.profile-description { display: block; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
-.active-badge { position: absolute; right: 16px; top: 18px; background: #7d32ad; color: white; border-radius: 20px; padding: 5px 12px; font-size: 13px; pointer-events: none; }
-.profile-menu { position: absolute; right: 12px; bottom: 14px; }
+.profile-choose { text-align: left; border: 0; background: none; color: var(--text); padding: 16px; width: 100%; height: 100%; cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 6px; overflow: hidden; border-radius: inherit; }
+.profile-icon { display: block; font-size: 32px; margin-bottom: 2px; flex-shrink: 0; }
+.profile-choose strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; flex-shrink: 0; }
+.profile-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; padding-right: 20px; }
+.active-badge { position: absolute; right: 10px; top: 12px; background: #7d32ad; color: white; border-radius: 20px; padding: 4px 9px; font-size: 12px; pointer-events: none; }
+.profile-menu { position: absolute; right: 4px; bottom: 6px; }
 .profile-menu summary { list-style: none; cursor: pointer; font-size: 24px; padding: 4px 10px; color: var(--muted); }
 .profile-menu button { position: absolute; z-index: 2; right: 0; width: 135px; padding: 12px; border: 1px solid var(--border-ui); background: var(--surface); color: var(--text); border-radius: 8px; cursor: pointer; }
 .profile-menu button:disabled { opacity: .5; cursor: default; }
@@ -840,7 +840,7 @@
   .profiles-main { padding: 18px 14px; }
   .profiles-heading, .settings-heading { align-items: flex-start; flex-wrap: wrap; }
   .profiles-page .row > label { width: 100%; }
-  .profile-cards { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); }
+  .profile-cards { grid-template-columns: repeat(auto-fill, 180px); }
   .profile-settings { padding: 16px; }
 }
 
