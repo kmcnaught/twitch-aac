@@ -24,6 +24,7 @@ function setup(saved = {}, options = {}) {
   let request;
   let source;
   let audio;
+  let contexts = 0;
   const revoked = [];
   const context = vm.createContext({
     localStorage: {
@@ -50,14 +51,11 @@ function setup(saved = {}, options = {}) {
       load() {}
     },
     AudioContext: class {
+      constructor() { contexts++; }
       state = 'running';
       async decodeAudioData() { return {}; }
       createBufferSource() {
         source = { playbackRate: { value: 1 }, connect() {}, start() {} };
-        return source;
-      }
-      createMediaElementSource() {
-        source = { connect() {}, disconnect() { this.disconnected = true; } };
         return source;
       }
     },
@@ -68,7 +66,7 @@ function setup(saved = {}, options = {}) {
     }
   });
   vm.runInContext(core + '\n' + settings, context);
-  return { context, storage, elements, revoked, request: () => request, source: () => source, audio: () => audio };
+  return { context, storage, elements, revoked, request: () => request, source: () => source, audio: () => audio, contexts: () => contexts };
 }
 
 test('defaults preserve existing voice behaviour and zero style', async () => {
@@ -93,6 +91,7 @@ test('playback mode generates at normal speed then plays at the saved rate witho
     assert.equal(reloaded.request().body.voice_settings.speed, 1);
     assert.equal(reloaded.audio().playbackRate, rate);
     assert.equal(reloaded.audio().preservesPitch, true);
+    assert.equal(reloaded.contexts(), 0);
     assert.equal(reloaded.request().body.model_id, 'eleven_multilingual_v2');
   }
 });
@@ -107,7 +106,7 @@ test('playback audio resources are released on completion and interruption', asy
     if (action === 'finish') {
       assert.equal(app.audio().paused, true);
       assert.equal(app.audio().src, '');
-      assert.equal(app.source().disconnected, true);
+      assert.equal(app.contexts(), 0);
     }
   }
 });
@@ -117,7 +116,7 @@ test('rejected playback releases audio resources and reports an error', async ()
   const errors = [];
   await app.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null, message => errors.push(message));
   assert.deepEqual(app.revoked, ['blob:test-audio']);
-  assert.equal(app.source().disconnected, true);
+  assert.equal(app.audio().src, '');
   assert.deepEqual(errors, ['Playback rejected']);
 });
 
@@ -148,7 +147,7 @@ test('Stop releases pending playback without reporting intentional cancellation 
   await pending;
   assert.deepEqual(errors, []);
   assert.deepEqual(app.revoked, ['blob:test-audio']);
-  assert.equal(app.source().disconnected, true);
+  assert.equal(app.audio().src, '');
 });
 
 test('generation mode and invalid modes retain ElevenLabs speed with normal playback', async () => {
