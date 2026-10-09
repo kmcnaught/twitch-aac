@@ -520,7 +520,8 @@ function renderElVoiceSetting(setting) {
 
 function stepElVoiceSetting(setting, dir) {
   const percent = Math.round(getElVoiceSetting(setting) * 100);
-  const next = Math.max(0, Math.min(100, percent + dir * 5));
+  const step = setting === 'style' ? 1 : 5;
+  const next = Math.max(0, Math.min(100, percent + dir * step));
   localStorage.setItem('el_' + setting, String(next / 100));
   renderElVoiceSetting(setting);
 }
