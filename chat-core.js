@@ -105,7 +105,7 @@ function getElVoiceSetting(setting) {
 
 async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, contentType) {
   const url = URL.createObjectURL(new Blob([arrayBuffer], { type: contentType }));
-  let audio, source, released = false, started = false;
+  let audio, released = false, started = false;
   const playback = { pause: release };
   function release() {
     if (released) return;
@@ -116,7 +116,6 @@ async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, cont
       audio.removeAttribute('src');
       audio.load();
     }
-    if (source) source.disconnect();
     URL.revokeObjectURL(url);
     if (elAudio === playback) elAudio = null;
   }
@@ -124,8 +123,6 @@ async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, cont
     audio = new Audio(url);
     audio.playbackRate = speed;
     audio.preservesPitch = true;
-    source = elAudioCtx.createMediaElementSource(audio);
-    source.connect(elAudioCtx.destination);
     audio.onended = () => { release(); if (token === elSpeakToken) clearSpeak(card); };
     audio.onerror = () => {
       release();
@@ -162,10 +159,11 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
   const token = ++elSpeakToken;
   const speed = getElSpeed();
   const playbackSpeed = getElSpeedMode() === 'playback';
-  // Create/resume AudioContext before the fetch so Firefox's audio pipeline
-  // warms up during the network round-trip, avoiding start-of-audio cutoff
-  if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
-  if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
+  if (!playbackSpeed) {
+    // Warm up Web Audio during the fetch to avoid Firefox cutting off speech.
+    if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
+    if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
+  }
   try {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
