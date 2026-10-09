@@ -9,6 +9,15 @@ const core = fs.readFileSync(path.join(root, 'chat-core.js'), 'utf8');
 const settings = [...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .find(match => match[1].includes('// ── STATE'))[1];
 
+test('setup and chat load the same versioned voice script instead of the cached legacy URL', () => {
+  const scripts = ['index.html', 'chat.html'].map(file => {
+    const html = fs.readFileSync(path.join(root, file), 'utf8');
+    return html.match(/<script src="(chat-core\.js[^\"]*)" defer><\/script>/)[1];
+  });
+  assert.equal(scripts[0], scripts[1]);
+  assert.match(scripts[0], /^chat-core\.js\?v=.+$/);
+});
+
 function setup(saved = {}) {
   const storage = new Map(Object.entries(saved));
   const elements = new Map();
