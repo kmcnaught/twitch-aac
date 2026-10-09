@@ -78,6 +78,12 @@ function parseIrcMsg(raw) {
 
 // ── SPEECH ──
 const EL_VOICE_DEFAULTS = { stability: 0.5, similarity_boost: 0.75, style: 0 };
+const EL_MODEL_IDS = ['eleven_turbo_v2_5', 'eleven_multilingual_v2', 'eleven_flash_v2_5'];
+
+function getElModel() {
+  const saved = localStorage.getItem('el_model');
+  return EL_MODEL_IDS.includes(saved) ? saved : EL_MODEL_IDS[0];
+}
 
 function getElVoiceSetting(setting) {
   const saved = localStorage.getItem('el_' + setting);
@@ -114,7 +120,7 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text,
-        model_id: 'eleven_turbo_v2_5',
+        model_id: getElModel(),
         voice_settings: {
           stability: getElVoiceSetting('stability'),
           similarity_boost: getElVoiceSetting('similarity_boost'),
