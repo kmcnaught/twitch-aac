@@ -102,22 +102,38 @@ test('invalid saved values fall back and out-of-range values are bounded', () =>
   }
 });
 
-test('controls step by 5%, persist across reloads, and stop at both limits', () => {
+test('style steps by 1%, other controls by 5%, with persistence and bounded limits', () => {
   for (const setting of ['stability', 'similarity_boost', 'style']) {
-    const app = setup({ ['el_' + setting]: '0.95' });
+    const step = setting === 'style' ? 1 : 5;
+    const app = setup({ ['el_' + setting]: String((100 - step) / 100) });
     app.context.stepElVoiceSetting(setting, 1);
     assert.equal(app.storage.get('el_' + setting), '1');
     assert.equal(app.elements.get('el-' + setting + '-label').textContent, '100%');
     assert.equal(app.elements.get('el-' + setting + '-increase').disabled, true);
     app.context.stepElVoiceSetting(setting, 1);
     assert.equal(app.storage.get('el_' + setting), '1');
-    for (let i = 0; i < 21; i++) app.context.stepElVoiceSetting(setting, -1);
+    for (let i = 0; i < 100 / step + 1; i++) app.context.stepElVoiceSetting(setting, -1);
     assert.equal(app.storage.get('el_' + setting), '0');
     assert.equal(app.elements.get('el-' + setting + '-decrease').disabled, true);
     app.context.stepElVoiceSetting(setting, 1);
     const reloaded = setup(Object.fromEntries(app.storage));
     reloaded.context.renderElVoiceSetting(setting);
-    assert.equal(reloaded.elements.get('el-' + setting + '-label').textContent, '5%');
+    assert.equal(reloaded.elements.get('el-' + setting + '-label').textContent, step + '%');
     assert.equal(reloaded.elements.get('el-' + setting + '-decrease').disabled, false);
   }
+});
+
+test('style can match 7% exactly and is sent as 0.07', async () => {
+  const app = setup({ el_model: 'eleven_multilingual_v2', el_speed: '0.7', el_stability: '1', el_similarity_boost: '1', el_style: '0.05' });
+  app.context.stepElVoiceSetting('style', 1);
+  app.context.stepElVoiceSetting('style', 1);
+  assert.equal(app.elements.get('el-style-label').textContent, '7%');
+  const reloaded = setup(Object.fromEntries(app.storage));
+  reloaded.context.renderElVoiceSetting('style');
+  assert.equal(reloaded.elements.get('el-style-label').textContent, '7%');
+  await reloaded.context.speakElevenLabs('Test phrase', 'test-key', 'test-voice', null);
+  assert.equal(reloaded.request().body.model_id, 'eleven_multilingual_v2');
+  assert.deepEqual(reloaded.request().body.voice_settings, {
+    stability: 1, similarity_boost: 1, style: 0.07, speed: 0.7
+  });
 });
