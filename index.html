@@ -111,6 +111,14 @@
       </div>
     </div>
   </div>
+  <section id="game-phrase-manager" aria-label="Game phrase files">
+    <h2>Quiet Mode · game phrases</h2>
+    <p>Choose a game above, then upload a .txt file. Each non-empty line is one phrase. Saved in this browser.</p>
+    <button id="game-phrase-upload" type="button">Upload / replace .txt for selected game</button>
+    <input id="game-phrase-file" type="file" accept=".txt,text/plain" hidden>
+    <p id="game-phrase-status" role="status"></p>
+    <div id="game-phrase-files"></div>
+  </section>
   <div id="start-bar">
     <button class="btn-connect" id="start-btn" onclick="goToChat()">▶ Start StreamAAC</button>
   </div>

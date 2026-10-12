@@ -30,6 +30,7 @@
     </div>
     <button class="btn-exit-fs" id="fs-phrases-btn" onclick="togglePhrasesView()">phrases</button>
     <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
+    <button class="btn-exit-fs" id="fs-mode-btn" onclick="toggleQuietMode()" aria-pressed="false">Chat Mode</button>
   </div>
 
   <div id="fs-body">
@@ -103,6 +104,79 @@
 </div>
 
 <script>
+let quietMode = false;
+let suggestionRequest = 0;
+let chatModeContent = null;
+let quietResponses = [];
+let quietPoolSignature = '';
+let quietRemaining = [];
+
+function toggleQuietMode() {
+  suggestionRequest++;
+  phrasesSuggestToken++;
+  if (phrasesViewActive) togglePhrasesView();
+  const area = document.getElementById('fs-responses');
+  quietMode = !quietMode;
+  if (quietMode) {
+    // Keep the actual nodes so restored cards retain their speech handlers.
+    chatModeContent = [...area.childNodes];
+    if (area.querySelector('.spinner')) chatModeContent = [];
+    showQuietPhrases(true);
+  } else {
+    area.replaceChildren(...(chatModeContent || []));
+    if (!area.childNodes.length) area.innerHTML = '<div id="fs-empty-state"><button id="fs-suggest-prominent" onclick="gen()">suggest</button><div class="fs-empty-hint">hit suggest to generate responses</div></div>';
+  }
+  const button = document.getElementById('fs-mode-btn');
+  button.textContent = quietMode ? 'Quiet Mode' : 'Chat Mode';
+  button.setAttribute('aria-pressed', String(quietMode));
+  button.setAttribute('aria-label', quietMode ? 'Quiet Mode. Switch to Chat Mode' : 'Chat Mode. Switch to Quiet Mode');
+  document.querySelector('.fs-verbosity').hidden = quietMode;
+  document.querySelector('.fs-verbosity').style.display = quietMode ? 'none' : '';
+  openFsChat();
+  updateSuggestEnabled();
+}
+
+function showQuietPhrases(reuse = false) {
+  if (phrasesViewActive) togglePhrasesView();
+  const files = loadGamePhraseFiles();
+  const game = selectedPhraseGame();
+  const gamePhrases = Object.hasOwn(files, game) && Array.isArray(files[game].phrases) ? files[game].phrases : [];
+  const pool = [...new Set([...gamePhrases, ...loadPhrases().map(p => p.phrase)]
+    .filter(p => typeof p === 'string').map(p => p.trim()).filter(Boolean))];
+  const signature = JSON.stringify([game, pool]);
+  if (signature !== quietPoolSignature) { quietPoolSignature = signature; quietRemaining = []; reuse = false; }
+  const batch = [];
+  const count = Math.min(4, pool.length);
+  if (reuse) batch.push(...quietResponses);
+  while (batch.length < count) {
+    if (!quietRemaining.length) {
+      quietRemaining = [...pool];
+      for (let i = quietRemaining.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [quietRemaining[i], quietRemaining[j]] = [quietRemaining[j], quietRemaining[i]];
+      }
+    }
+    // At a cycle boundary, finish showing unseen phrases before repeating,
+    // and never duplicate a phrase within the same four-card batch.
+    const index = quietRemaining.findIndex(p => !batch.includes(p));
+    batch.push(quietRemaining.splice(index, 1)[0]);
+  }
+  quietResponses = batch;
+  renderFsCards(batch);
+  const area = document.getElementById('fs-responses');
+  if (!count) {
+    area.innerHTML = '<div class="fs-loader" role="status">No phrases yet. Add general phrases on the Phrases page or upload a game .txt file on the home page.</div>';
+  } else {
+    for (let i = count; i < 4; i++) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'fs-card quiet-placeholder';
+      placeholder.innerHTML = `<div class="fs-rnum">${i + 1}</div><div class="fs-rtext">Add more phrases to fill this card.</div>`;
+      area.append(placeholder);
+    }
+  }
+  updateSuggestEnabled();
+}
+
 // ── STATE ──
 let ws = null, chatLog = [], isConnected = false, everConnected = false;
 let currentChannel = '';
@@ -143,6 +217,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
   seedPhrasesIfEmpty();
+  updateSuggestEnabled();
 });
 
 // ── THEME ──
@@ -201,7 +276,7 @@ function setFsSuggestEnabled(enabled) {
   const prominent = document.getElementById('fs-suggest-prominent');
   if (prominent) prominent.disabled = !enabled;
 }
-function updateSuggestEnabled() { setFsSuggestEnabled(isConnected || ytConnected); }
+function updateSuggestEnabled() { setFsSuggestEnabled(quietMode || isConnected || ytConnected); document.getElementById('fs-magic-btn').disabled = quietMode || !(isConnected || ytConnected); }
 
 // ── CONNECT ──
 function connect(rawCh) {
@@ -485,6 +560,8 @@ function openFsChat() {
 
 // ── GENERATE ──
 async function gen() {
+  if (quietMode) { showQuietPhrases(); return; }
+  const request = ++suggestionRequest;
   const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n') || '(no chat messages yet — streamer just went live)';
 
   const persona    = localStorage.getItem('persona') || 'a streamer';
@@ -537,12 +614,12 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
     const raw = d.content?.[0]?.text ?? '';
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
-    renderFsCards(JSON.parse(jsonMatch[0]).responses);
+    if (request === suggestionRequest) renderFsCards(JSON.parse(jsonMatch[0]).responses);
   } catch(e) {
-    document.getElementById('fs-responses').innerHTML =
+    if (request === suggestionRequest) document.getElementById('fs-responses').innerHTML =
       `<div class="fs-loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
   } finally {
-    setFsSuggestEnabled(true);
+    if (request === suggestionRequest) updateSuggestEnabled();
   }
 }
 
@@ -550,13 +627,26 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
 function renderFsCards(responses) {
   const area = document.getElementById('fs-responses');
   area.innerHTML = '';
-  responses.forEach((text, i) => {
+  responses.slice(0, 4).forEach((text, i) => {
     const card = document.createElement('div');
     card.className = 'fs-card';
     card.innerHTML = `<div class="fs-rnum">${i+1}</div><div class="fs-rtext">${x(text)}</div>
       <div class="fs-card-btns"><button class="fs-speak">🔊</button><button class="fs-stop">■</button></div>`;
-    card.querySelector('.fs-speak').onclick = () => speak(text, card);
-    card.querySelector('.fs-stop').onclick  = () => stopSpeak();
+    card.tabIndex = 0;
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', `Phrase ${i + 1}: ${text}`);
+    const select = () => {
+      area.querySelectorAll('.fs-card').forEach(el => el.classList.remove('selected'));
+      card.classList.add('selected');
+      document.getElementById('fs-custom-input').value = text;
+      document.getElementById('fs-custom-input').dispatchEvent(new Event('input'));
+    };
+    card.onclick = select;
+    card.onkeydown = e => { if (e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(); } };
+    card.querySelector('.fs-speak').setAttribute('aria-label', `Speak phrase ${i + 1}`);
+    card.querySelector('.fs-stop').setAttribute('aria-label', 'Stop speaking');
+    card.querySelector('.fs-speak').onclick = e => { e.stopPropagation(); speak(text, card); };
+    card.querySelector('.fs-stop').onclick = e => { e.stopPropagation(); stopSpeak(); };
     area.appendChild(card);
   });
 }
@@ -830,6 +920,7 @@ function renderTagGrid() {
 
 // ── LLM PHRASE SUGGESTIONS ──
 async function loadSuggestedPhrases() {
+  if (quietMode) { suggestedPhraseIds = []; renderPhrasesGrid(); return; }
   const token = ++phrasesSuggestToken;
   const phrases = loadPhrases();
   if (!phrases.length) {
@@ -1054,6 +1145,8 @@ function importPhrases(event) {
 
 // ── GENERATE FROM KEYWORDS ──
 async function genFromKeywords() {
+  if (quietMode) return;
+  const request = ++suggestionRequest;
   const keywords = document.getElementById('fs-custom-input').value.trim();
   if (!keywords) return;
 
@@ -1106,12 +1199,12 @@ ${chat}${handle ? '\nStreamer handle: @'+handle : ''}${ctx ? '\nContext: '+ctx :
     const raw = d.content?.[0]?.text ?? '';
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
-    renderFsCards(JSON.parse(jsonMatch[0]).responses);
+    if (request === suggestionRequest) renderFsCards(JSON.parse(jsonMatch[0]).responses);
   } catch(e) {
-    document.getElementById('fs-responses').innerHTML =
+    if (request === suggestionRequest) document.getElementById('fs-responses').innerHTML =
       `<div class="fs-loader" style="color:var(--accent2)">Error: ${x(e.message)}</div>`;
   } finally {
-    setFsSuggestEnabled(true);
+    if (request === suggestionRequest) updateSuggestEnabled();
   }
 }
 </script>
