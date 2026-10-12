@@ -8,6 +8,7 @@
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=voice-direct-playback-1" defer></script>
 <script src="sample-phrases.js"></script>
+<script src="notifications.js" defer></script>
 </head>
 <body>
 
@@ -30,11 +31,29 @@
     </div>
     <button class="btn-exit-fs" id="fs-phrases-btn" onclick="togglePhrasesView()">phrases</button>
     <button class="btn-exit-fs" id="fs-theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
+    <button class="btn-exit-fs" id="notifications-button" aria-expanded="false" aria-controls="notifications-panel"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg> Notifications <span id="notifications-count">0</span></button>
     <button class="btn-exit-fs" id="fs-mode-btn" onclick="toggleQuietMode()" aria-pressed="false">Chat Mode</button>
   </div>
 
   <div id="fs-body">
     <div id="fs-main">
+      <section id="notifications-panel" aria-label="Twitch notifications" hidden>
+        <div class="notification-toolbar"><h2>Notifications</h2><button id="notifications-close">Close</button></div>
+        <p id="notifications-status"></p>
+        <div class="notification-toolbar"><button id="notifications-pending" aria-pressed="true">Pending</button><button id="notifications-history" aria-pressed="false">History</button><button id="notifications-settings" aria-pressed="false">Settings</button></div>
+        <p id="notifications-feedback" role="status"></p>
+        <div id="notifications-settings-area" hidden>
+          <h3>Responses for <span id="notifications-channel"></span></h3>
+          <div class="notification-toolbar"><button id="notifications-ai" aria-pressed="false">AI-generated suggestions</button><button id="notifications-phrases" aria-pressed="true">Phrase bank only</button></div>
+          <p>Review and edit every response before speaking. Phrase bank only makes no notification AI requests. Settings are remembered for this channel.</p>
+          <h3>Event phrases</h3><p>Choose an existing saved phrase for each event. Placeholders: {username}, {bits}, {viewers}, {subscriptions}, {months}, {reward}, {points}. Edit or add phrases using the existing phrases manager.</p>
+          <div id="notifications-mappings"></div>
+          <p>For all events, connect Twitch as this channel's broadcaster with notification permissions. Followers also work for an authorized moderator. Resubscriptions arrive when a viewer shares a resubscription message.</p>
+          <a href="index.html">Open setup to reconnect Twitch</a>
+        </div>
+        <div id="notifications-list"></div>
+        <button id="notifications-more" hidden>Show more history</button>
+      </section>
       <div id="fs-responses">
         <div id="fs-empty-state">
           <button id="fs-suggest-prominent" onclick="gen()">suggest</button>
@@ -284,6 +303,7 @@ function connect(rawCh) {
   ch = ch.replace(/^(https?:\/\/)?(www\.)?twitch\.tv\//, '').replace(/^@/, '').replace(/\/.*$/, '').trim();
   if (!ch) return;
   currentChannel = ch;
+  if (window.StreamNotifications) window.StreamNotifications.connect(ch);
   clearTimeout(reconnectTimer);
 
   function handleConnectFailure(ch) {

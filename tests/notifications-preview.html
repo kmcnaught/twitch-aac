@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>StreamAAC notification simulation</title></head>
+<body style="margin:0;background:#13131b;color:white;font:16px sans-serif">
+<div style="padding:8px">Simulated Twitch, AI and speech only. <button id="incoming">Add raid</button> <button id="complete">Finish simulated speech</button> <button id="refresh">Refresh app</button><span id="counts"></span></div>
+<iframe title="StreamAAC simulation" style="width:100%;height:calc(100vh - 45px);border:0"></iframe>
+<script>
+async function load() {
+  const html = await (await fetch('../chat.html')).text();
+  const fixture = function () {
+    const saved = new Map(Object.entries(JSON.parse(parent.sessionStorage.getItem('notification_test_storage') || '{}')));
+    if (!saved.size) {
+      saved.set('twitch_channel', 'testchannel'); saved.set('twitch_token', 'fixture-only'); saved.set('twitch_handle', 'testchannel');
+      saved.set('stored_phrases', JSON.stringify([{id:'raid-phrase',tag:'event:raid',label:'raid thanks',phrase:'Welcome {username} and {viewers} viewers!'}]));
+    }
+    Object.defineProperty(window, 'localStorage', { value: { getItem: k => saved.get(k) ?? null, setItem(k,v) { saved.set(k,String(v)); parent.sessionStorage.setItem('notification_test_storage', JSON.stringify(Object.fromEntries(saved))); }, removeItem(k) { saved.delete(k); } } });
+    let socket, counter = 0, aiCount = 0;
+    window.sendRaid = () => socket?.onmessage?.({data:JSON.stringify({metadata:{message_type:'notification',message_id:'raid-'+Date.now(),subscription_type:'channel.raid',message_timestamp:new Date().toISOString()},payload:{event:{from_broadcaster_user_name:'TestRaider',viewers:25}}})});
+    window.fetch = async (url, options) => {
+      if (url.includes('oauth2/validate')) return {ok:true,json:async()=>({client_id:'fixture-client',user_id:'broadcaster',scopes:['moderator:read:followers','channel:read:subscriptions','bits:read','channel:read:redemptions']})};
+      if (url.includes('/helix/users')) return {ok:true,json:async()=>({data:[{id:'broadcaster'}]})};
+      if (url.includes('/eventsub/subscriptions')) { if (++counter === 8) setTimeout(window.sendRaid, 100); return {ok:true}; }
+      if (url.includes('/v1/messages')) { parent.document.getElementById('counts').textContent = ' Simulated AI requests: ' + (++aiCount); return {ok:true,json:async()=>({content:[{text:JSON.stringify({responses:['Thank you TestRaider for bringing 25 viewers!']})}]})}; }
+      throw Error('External requests disabled in fixture');
+    };
+    window.WebSocket = class {
+      static OPEN = 1;
+      constructor(url) { this.readyState = 1; if (url.includes('eventsub')) { socket = this; setTimeout(()=>this.onmessage?.({data:JSON.stringify({metadata:{message_type:'session_welcome'},payload:{session:{id:'fixture-session',keepalive_timeout_seconds:600}}})}),10); } else setTimeout(()=>this.onopen?.(),10); }
+      send(text) { if (text.startsWith('JOIN')) setTimeout(()=>this.onmessage?.({data:':tmi.twitch.tv 366 testchannel #testchannel :End'}),10); }
+      close() { this.readyState = 3; }
+    };
+    let utterance;
+    window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[],speaking:false,pending:false,speak(u){utterance=u;this.speaking=true;},cancel(){this.speaking=false;utterance?.onerror?.();utterance=null;}}});
+    window.completeSpeech = () => { window.speechSynthesis.speaking=false; utterance?.onend?.(); utterance=null; };
+  };
+  document.querySelector('iframe').srcdoc = html.replace('<head>', '<head><base href="' + new URL('../', location.href).href + '"><script>(' + fixture.toString() + ')();<\/script>');
+}
+document.getElementById('incoming').onclick = () => document.querySelector('iframe').contentWindow.sendRaid();
+document.getElementById('complete').onclick = () => document.querySelector('iframe').contentWindow.completeSpeech();
+document.getElementById('refresh').onclick = load;
+load();
+</script></body></html>

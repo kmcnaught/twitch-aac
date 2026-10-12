@@ -869,7 +869,7 @@
 #build-stamp:empty { display: none; }
 
 /* Quiet Mode uses the same four response rows as Chat Mode. */
-#fs-mode-btn { margin-left: auto; min-height: 48px; min-width: 150px; color: var(--text); }
+#fs-mode-btn { min-height: 48px; min-width: 150px; color: var(--text); }
 #fs-mode-btn[aria-pressed="true"] { background: var(--accent); color: white; }
 .fs-card.selected { border-color: var(--accent); }
 .fs-card { cursor: pointer; }
@@ -886,3 +886,31 @@
 .game-phrases-page #game-phrase-manager { margin: 20px 0; }
 .game-phrases-page #game-phrase-manager .row { margin: 16px 0; }
 [data-theme="light"] .game-phrases-page .nav-item.selected { color: var(--text); }
+/* Notifications occupy only the response workspace; Twitch chat remains beside it. */
+#notifications-button { margin-left: auto; min-height: 54px; display: flex; align-items: center; gap: 10px; color: var(--text); }
+#notifications-count { background: var(--accent); color: white; border-radius: 20px; padding: 4px 10px; min-width: 28px; }
+#fs-main { position: relative; }
+#notifications-panel { position: absolute; inset: 0; z-index: 5; overflow-y: auto; background: var(--bg); padding: 18px; border-right: 1px solid var(--border); font-size: max(17px, var(--fs-font-size, 17px)); }
+#notifications-panel[hidden], #notifications-panel [hidden] { display: none !important; }
+#notifications-panel h2 { margin: 0; }
+#notifications-panel p { line-height: 1.5; overflow-wrap: anywhere; }
+.notification-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.notification-toolbar h2 { flex: 1; }
+#notifications-panel button, #notifications-panel select, #notifications-panel a { min-height: 60px; font: inherit; padding: 12px 18px; border: 2px solid var(--border-ui); border-radius: 10px; background: var(--bg); color: var(--text); }
+#notifications-panel button { cursor: pointer; min-width: 140px; }
+#notifications-panel button[aria-pressed="true"], #notifications-panel .notification-speak { background: var(--accent); color: white; }
+#notifications-panel :focus-visible, #notifications-button:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+#notifications-panel button:disabled { opacity: 0.6; cursor: default; }
+#notifications-panel label { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+#notifications-panel select { width: 100%; max-width: 100%; }
+#notifications-panel textarea { width: 100%; box-sizing: border-box; font: inherit; line-height: 1.5; min-height: 100px; padding: 14px; background: var(--bg); color: var(--text); border: 2px solid var(--border-ui); border-radius: 10px; resize: vertical; }
+.notification-card { border: 2px solid var(--border-ui); border-radius: 14px; padding: 18px; margin: 18px 0; }
+.notification-card.speaking { border-color: var(--accent); }
+.notification-card h3 { margin-top: 0; overflow-wrap: anywhere; }
+.notification-outcome { color: var(--muted); }
+#notifications-feedback { color: var(--accent2); }
+@media (max-width: 700px) { #notifications-panel { padding: 10px; } .notification-toolbar button { flex: 1; } #notifications-button { margin-left: 0; } }
+@media (max-width: 700px) {
+  #fs-body:has(#notifications-panel:not([hidden])) #fs-chat-panel:not(.closed) { width: clamp(140px, 30vw, 210px); }
+  #fs-topbar .fs-verbosity { flex-wrap: wrap; }
+}
