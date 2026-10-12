@@ -564,7 +564,7 @@ function startTwitchAuth() {
     + '?client_id=' + TWITCH_CLIENT_ID
     + '&redirect_uri=' + encodeURIComponent(window.location.origin + window.location.pathname)
     + '&response_type=token'
-    + '&scope=' + encodeURIComponent('chat:read chat:edit');
+    + '&scope=' + encodeURIComponent('chat:read chat:edit moderator:read:followers channel:read:subscriptions bits:read channel:read:redemptions');
   window.location.href = url;
 }
 

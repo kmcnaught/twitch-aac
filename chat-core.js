@@ -123,7 +123,7 @@ async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, cont
     audio = new Audio(url);
     audio.playbackRate = speed;
     audio.preservesPitch = true;
-    audio.onended = () => { release(); if (token === elSpeakToken) clearSpeak(card); };
+    audio.onended = () => { release(); if (token === elSpeakToken) clearSpeak(card, true); };
     audio.onerror = () => {
       release();
       if (started && token === elSpeakToken) {
@@ -141,6 +141,7 @@ async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, cont
 }
 
 function speakBrowser(text, card) {
+  const token = ++elSpeakToken;
   const u = new SpeechSynthesisUtterance(text);
   const savedVoiceName = localStorage.getItem('browser_voice') || '';
   const lang = localStorage.getItem('voice_lang') || 'en';
@@ -150,7 +151,8 @@ function speakBrowser(text, card) {
     : allVoices.find(v => v.lang.startsWith(lang));
   if (chosen) u.voice = chosen;
   u.rate = 0.95;
-  u.onend = u.onerror = () => clearSpeak(card);
+  u.onend = () => { if (token === elSpeakToken) clearSpeak(card, true); };
+  u.onerror = () => { if (token === elSpeakToken) clearSpeak(card); };
   window.speechSynthesis.speak(u);
 }
 
@@ -198,7 +200,7 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
     source.buffer = audioBuffer;
     source.connect(elAudioCtx.destination);
     source.start();
-    source.onended = () => { elAudio = null; clearSpeak(card); };
+    source.onended = () => { if (token === elSpeakToken) { elAudio = null; clearSpeak(card, true); } };
     elAudio = { pause: () => { try { source.stop(); } catch(_) {} } };  // shim for stopSpeak()
   } catch(e) {
     if (token !== elSpeakToken) return;  // superseded; don't surface stale error
@@ -215,9 +217,14 @@ function stopSpeak() {
   if (speakingCard) clearSpeak(speakingCard);
 }
 
-function clearSpeak(card) {
+function clearSpeak(card, completed = false) {
   if (card) card.classList.remove('speaking');
-  speakingCard = null;
+  if (speakingCard === card) speakingCard = null;
+  if (card && card.onSpeechComplete) {
+    const callback = card.onSpeechComplete;
+    delete card.onSpeechComplete;
+    callback(completed);
+  }
 }
 
 // ── TWITCH CHAT SEND ──
