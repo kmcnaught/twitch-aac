@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamAAC · Game phrases</title>
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+<script src="chat-core.js?v=voice-direct-playback-1" defer></script>
+<script src="build-info.js" defer></script>
+</head>
+<body class="profiles-page game-phrases-page">
+<div id="compact-view">
+  <header>
+    <div class="brand"><div class="logo">StreamAAC</div><div class="tagline">Chat. Stream. Be You.</div></div>
+    <a class="hbtn" href="index.html#voice-settings">voice</a>
+    <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
+  </header>
+  <div class="profiles-layout">
+    <nav class="profiles-nav" aria-label="Main navigation">
+      <a class="nav-item" aria-label="Home" href="index.html">⌂ <span>Home</span></a>
+      <a class="nav-item" aria-label="Profiles" href="index.html#profiles-heading">♙ <span>Profiles</span></a>
+      <a class="nav-item" aria-label="Voice settings" href="index.html#voice-settings">⚙ <span>Voice settings</span></a>
+      <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
+      <a class="nav-item selected" aria-label="Game phrases" href="game-phrases.html" aria-current="page">♧ <span>Game phrases</span></a>
+    </nav>
+    <main class="profiles-main">
+      <div class="profiles-heading"><div><h1>Game phrases</h1><p>Manage phrase files for Quiet Mode.</p></div></div>
+      <section id="game-phrase-manager" aria-label="Game phrase files">
+        <h2>Quiet Mode · game phrases</h2>
+        <p>Choose a game below, then upload a .txt file. Each non-empty line is one phrase. Saved in this browser.</p>
+        <div class="row">
+          <label for="game-select">♧ Game</label>
+        <select id="game-select">
+          <option value="">— not specified —</option>
+          <option value="Just Chatting">Just Chatting</option>
+          <option value="Animal Crossing">Animal Crossing</option>
+          <option value="Apex Legends">Apex Legends</option>
+          <option value="Fortnite">Fortnite</option>
+          <option value="Grand Theft Auto V">Grand Theft Auto V</option>
+          <option value="House Flipper">House Flipper</option>
+          <option value="League of Legends">League of Legends</option>
+          <option value="Minecraft">Minecraft</option>
+          <option value="PowerWash Simulator 2">PowerWash Simulator 2</option>
+          <option value="Valorant">Valorant</option>
+          <option value="other">Other…</option>
+        </select>
+        <div class="input-wrap" id="game-custom-wrap" style="display:none">
+          <input type="text" id="game-custom-input" placeholder="game name" autocorrect="off" spellcheck="false"/>
+          <button class="input-clear" aria-label="Clear">✕</button>
+  
+        </div>
+        </div>
+        <p>Quiet Mode uses the game selected in your home page profile. Choosing a game here only sets which file you manage.</p>
+        <button id="game-phrase-upload" class="primary" type="button">Upload / replace .txt for selected game</button>
+        <input id="game-phrase-file" type="file" accept=".txt,text/plain" hidden>
+        <p id="game-phrase-status" role="status"></p>
+        <div id="game-phrase-files"></div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+function updateGameInput() {
+  document.getElementById('game-custom-wrap').style.display = document.getElementById('game-select').value === 'other' ? '' : 'none';
+}
+const gameSelect = document.getElementById('game-select');
+gameSelect.value = localStorage.getItem('game') || '';
+document.getElementById('game-custom-input').value = localStorage.getItem('game_custom') || '';
+gameSelect.addEventListener('change', updateGameInput);
+updateGameInput();
+function toggleTheme() {
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  updateThemeButton();
+}
+function updateThemeButton() { document.getElementById('theme-btn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾'; }
+updateThemeButton();
+window.addEventListener('DOMContentLoaded', () => initClearBtn(document.getElementById('game-custom-input'), document.querySelector('#game-custom-wrap .input-clear')));
+</script>
+</body>
+</html>
