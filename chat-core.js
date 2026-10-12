@@ -273,3 +273,75 @@ function initClearBtn(inputEl, clearBtn, onClear) {
   });
   update();
 }
+// Game files use a separate key so the existing general phrase format stays intact.
+function loadGamePhraseFiles() {
+  try {
+    const value = JSON.parse(localStorage.getItem('game_phrase_files') || '{}');
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch { return {}; }
+}
+function selectedPhraseGame() {
+  const select = document.getElementById('game-select');
+  const game = select ? select.value : localStorage.getItem('game') || '';
+  return (game === 'other' ? (document.getElementById('game-custom-input')?.value ?? localStorage.getItem('game_custom') ?? '') : game).trim();
+}
+function parseGamePhraseText(text) {
+  return [...new Set(text.split(/\r\n|\n|\r/).map(line => line.trim()).filter(Boolean))];
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const manager = document.getElementById('game-phrase-manager');
+  if (!manager) return;
+  const fileInput = document.getElementById('game-phrase-file');
+  const status = document.getElementById('game-phrase-status');
+  let uploadGame = '';
+  function renderFiles() {
+    const list = document.getElementById('game-phrase-files');
+    list.replaceChildren();
+    for (const [game, data] of Object.entries(loadGamePhraseFiles())) {
+      if (!Array.isArray(data.phrases)) continue;
+      const row = document.createElement('div');
+      row.className = 'game-phrase-row';
+      const label = document.createElement('span');
+      label.textContent = `${game} · ${data.name} · ${data.phrases.length} phrases`;
+      const remove = document.createElement('button');
+      remove.textContent = 'Delete';
+      remove.setAttribute('aria-label', `Delete phrase file for ${game}`);
+      remove.onclick = () => {
+        try {
+          const files = loadGamePhraseFiles();
+          delete files[game];
+          localStorage.setItem('game_phrase_files', JSON.stringify(files));
+          status.textContent = `Deleted phrase file for ${game}. General phrases are still available.`;
+          renderFiles();
+        } catch { status.textContent = 'Could not delete the file. Browser storage is unavailable.'; }
+      };
+      row.append(label, remove);
+      list.append(row);
+    }
+    if (!list.children.length) list.textContent = 'No game files yet. Quiet Mode will use general phrases.';
+  }
+  document.getElementById('game-phrase-upload').onclick = () => {
+    uploadGame = selectedPhraseGame();
+    if (!uploadGame) { status.textContent = 'Choose a game above (or enter an Other game name) first.'; return; }
+    fileInput.click();
+  };
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    const game = uploadGame;
+    if (!file) return;
+    try {
+      if (!/\.txt$/i.test(file.name)) throw new Error('Please choose a .txt file.');
+      if (file.size > 2 * 1024 * 1024) throw new Error('Please choose a file smaller than 2 MB.');
+      const phrases = parseGamePhraseText(await file.text());
+      if (!phrases.length) throw new Error('The file has no phrases. Add one phrase per line.');
+      const files = loadGamePhraseFiles();
+      Object.defineProperty(files, game, { value: { name: file.name, phrases }, enumerable: true, configurable: true, writable: true });
+      localStorage.setItem('game_phrase_files', JSON.stringify(files));
+      status.textContent = `Saved ${phrases.length} phrases for ${game}.`;
+      renderFiles();
+    } catch (error) { status.textContent = error.name === 'QuotaExceededError' ? 'Browser storage is full. The previous file has been kept.' : error.message; }
+    finally { fileInput.value = ''; }
+  };
+  window.addEventListener('storage', e => { if (e.key === 'game_phrase_files') renderFiles(); });
+  renderFiles();
+});
