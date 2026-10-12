@@ -123,7 +123,7 @@
         if (this.sockets.size) return;
         clearTimeout(this.retryTimer);
         if (code === 4001) { this.onStatus('Event connection rejected. Reconnect Twitch in setup.'); return; }
-        this.onStatus('Event connection lost. Pending events are saved. Events during the outage may be missed. Reconnecting…');
+        this.onStatus('');
         this.retryTimer = setTimeout(() => this.start(), Math.min(60000, 1000 * 2 ** this.retry++) + Math.random() * 500);
       };
     }
@@ -358,10 +358,8 @@
       if (!broadcaster) throw Object.assign(new Error('Twitch channel not found.'), { retry: false });
       if (request !== epoch) return;
       const specs = Object.entries(TYPES).filter(([kind, spec]) => (!spec[3] || auth.scopes?.includes(spec[3])) && (['raid', 'follow'].includes(kind) || auth.user_id === broadcaster));
-      const missing = Object.keys(TYPES).filter(k => !specs.some(([kind]) => k === kind));
-      const suffix = missing.length ? ' Missing access: ' + missing.map(k => TYPES[k][0]).join(', ') + '. Reconnect in setup as this channel’s broadcaster for all events.' : '';
       connection = new EventConnection({ token, clientId, broadcaster, user: auth.user_id, specs,
-        onStatus: text => { if (request === epoch) status(text + suffix); },
+        onStatus: text => { if (request === epoch) status(text); },
         onEvent: message => {
           if (request !== epoch) return;
           const event = normalize(message, channel);

@@ -12,11 +12,11 @@ History includes pending, spoken and dismissed events, displayed in batches of 3
 
 ## Twitch access
 
-Reconnect Twitch from setup to authorize the added scopes: `moderator:read:followers`, `channel:read:subscriptions`, `bits:read`, `channel:read:redemptions`, alongside the existing chat scopes. Follow subscriptions require the logged-in account to be the broadcaster or a moderator; subscriptions, cheers and redemptions require the broadcaster's user token for WebSocket EventSub. A moderator login to SpecialEffect therefore cannot receive every event. The panel reports connected and unavailable event types. Do not place a client secret in this static application.
+Reconnect Twitch from setup to authorize the added scopes: `moderator:read:followers`, `channel:read:subscriptions`, `bits:read`, `channel:read:redemptions`, alongside the existing chat scopes. Follow subscriptions require the logged-in account to be the broadcaster or a moderator; subscriptions, cheers and redemptions require the broadcaster's user token for WebSocket EventSub. A moderator login to SpecialEffect therefore cannot receive every event. The panel reports connected events and subscription errors. Do not place a client secret in this static application.
 
 The app subscribes to follows (v2), subscriptions, shared resubscription messages, aggregate gifts, incoming raids, cheers, custom redemptions and automatic redemptions (v2). Gift-recipient subscription messages are suppressed to avoid duplicating gift acknowledgements. Twitch does not send every recurring subscription renewal as a resubscription message: the viewer must share it.
 
-One EventSub WebSocket is used, with temporary overlap for Twitch-directed migration. Migration retains subscriptions; unexpected disconnects reconnect with backoff and resubscribe. Message IDs are persisted for deduplication, and redemption IDs guard against duplicate rewards. Bootstrap/API network errors and transient subscription failures retry. Twitch cannot replay events missed during a complete outage; the connection status warns about that gap.
+One EventSub WebSocket is used, with temporary overlap for Twitch-directed migration. Migration retains subscriptions; unexpected disconnects reconnect with backoff and resubscribe. Message IDs are persisted for deduplication, and redemption IDs guard against duplicate rewards. Bootstrap/API network errors and transient subscription failures retry. Twitch cannot replay events missed during a complete outage; events during that gap may be missed.
 
 References: [WebSocket handling](https://dev.twitch.tv/docs/eventsub/handling-websocket-events/), [subscription types and authorization](https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/).
 
