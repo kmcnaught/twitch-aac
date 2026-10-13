@@ -1,6 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Store, normalize, interpolate, EventConnection, TYPES } = require('../notifications.js');
+const { subscriptionAccess } = require('../notifications.js');
+test('subscription diagnostics separate missing permission from broadcaster mismatch', () => {
+  assert.equal(subscriptionAccess({ user_id: '42', scopes: ['chat:read'] }, '42').allowed, false);
+  assert.match(subscriptionAccess({ user_id: '42', scopes: ['chat:read'] }, '42').reason, /permission/);
+  assert.match(subscriptionAccess({ user_id: '43', scopes: ['channel:read:subscriptions'] }, '42').reason, /broadcaster/);
+  assert.equal(subscriptionAccess({ user_id: '42', scopes: ['channel:read:subscriptions'] }, 42).allowed, true);
+});
 function storage() { const data = new Map(); return { getItem: k => data.get(k), setItem: (k, v) => data.set(k, v) }; }
 function message(kind, id = kind, event = {}) { return { metadata: { message_id: id, message_type: 'notification', subscription_type: TYPES[kind][1], message_timestamp: '2026-10-12T12:00:00Z' }, payload: { event: { user_name: 'TestUser', ...event } } }; }
 test('all requested events preserve relevant details and anonymous identity', () => {
