@@ -39,10 +39,13 @@
     <div id="fs-main">
       <section id="notifications-panel" aria-label="Twitch notifications" hidden>
         <div class="notification-toolbar"><h2>Notifications</h2><button id="notifications-close">Close</button></div>
-        <p id="notifications-status"></p>
         <div class="notification-toolbar"><button id="notifications-pending" aria-pressed="true">Pending</button><button id="notifications-history" aria-pressed="false">History</button><button id="notifications-settings" aria-pressed="false">Settings</button></div>
         <p id="notifications-feedback" role="status"></p>
         <div id="notifications-settings-area" hidden>
+          <h3>Twitch event connection</h3>
+          <p id="notifications-status">Not connected</p>
+          <p id="notifications-resub-status">Resubscriptions: not connected</p>
+          <button id="notifications-reconnect">Reconnect notifications</button>
           <h3>Responses for <span id="notifications-channel"></span></h3>
           <div class="notification-toolbar"><button id="notifications-ai" aria-pressed="false">AI-generated suggestions</button><button id="notifications-phrases" aria-pressed="true">Phrase bank only</button></div>
           <p>Review and edit every response before speaking. Phrase bank only makes no notification AI requests. Settings are remembered for this channel.</p>

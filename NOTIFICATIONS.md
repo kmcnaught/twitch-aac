@@ -22,6 +22,8 @@ References: [WebSocket handling](https://dev.twitch.tv/docs/eventsub/handling-we
 
 ## Validation
 
+On iPad, returning to the page, restoring it from the browser's page cache, or regaining network access checks the event socket's last heartbeat deadline. A stale connection is replaced and resubscribed; a healthy connection is retained. Bootstrap requests time out rather than staying stuck after suspension. Settings contains a short connection status, a separate resubscription permission/connection status, and a Reconnect notifications button. Connection messages do not appear in Pending or History. Events missed while the browser was suspended cannot be recovered from Twitch.
+
 Run `node tests/notifications.test.cjs`, `node tests/elevenlabs-settings.test.cjs`, and `node quiet-mode.test.cjs` from the repository root. Check JavaScript syntax including the embedded HTML scripts.
 
 Serve locally and open `tests/notifications-preview.html` for a simulation with isolated test storage, fake Twitch/AI responses, and silent simulated speech. This fixture blocks external service requests. Use Add raid, Finish simulated speech and Refresh app to exercise queueing and speech outcomes. It is excluded from published assets.

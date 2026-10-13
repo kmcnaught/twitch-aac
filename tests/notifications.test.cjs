@@ -64,3 +64,45 @@ test('temporary subscription failures retry while authorization failures stop', 
     c.stop();
   }
 });
+test('returning from suspension replaces a stale socket once, resubscribes and retains pending resubscriptions', async () => {
+  const sockets = [], requests = [], store = new Store(storage(), 'test');
+  class Socket { constructor() { this.readyState = 1; sockets.push(this); } close() { this.readyState = 3; this.onclose?.({ code: 1000 }); } }
+  const c = new EventConnection({ token: 'fixture', broadcaster: 'b', user: 'b', specs: [['resubscribe', TYPES.resubscribe]], Socket,
+    fetcher: async (_, req) => { requests.push(JSON.parse(req.body)); return { ok: true }; }, onStatus() {}, onEvent: m => store.add(normalize(m, 'test')) });
+  const welcome = s => s.onmessage({ data: JSON.stringify({ metadata: { message_type: 'session_welcome' }, payload: { session: { id: 'test' } } }) });
+  try {
+    c.start(); await welcome(sockets[0]);
+    await sockets[0].onmessage({ data: JSON.stringify(message('resubscribe', 'resub-seven', { cumulative_months: 7 })) });
+    assert.equal(c.recover(), true); assert.equal(sockets.length, 1);
+    c.deadlines.set(sockets[0], Date.now() - 60000);
+    c.recover(); c.recover();
+    assert.equal(sockets.length, 2); assert.equal(sockets[0].readyState, 3);
+    await welcome(sockets[1]);
+    assert.equal(requests.length, 2); assert.equal(requests[1].type, 'channel.subscription.message');
+    assert.equal(store.data.events[0].status, 'pending'); assert.equal(store.data.events[0].months, 7);
+  } finally { c.stop(); }
+});
+test('a rejected connection is stopped rather than falsely marked active', () => {
+  let socket;
+  class Socket { constructor() { socket = this; } close() {} }
+  const c = new EventConnection({ token: 'fixture', broadcaster: 'b', user: 'b', specs: [], Socket, onStatus() {}, onEvent() {} });
+  c.start(); socket.onclose({ code: 4001 });
+  assert.equal(c.stopped, true); assert.equal(c.recover(), false); assert.equal(c.sockets.size, 0);
+});
+test('mixed authorization failure reports disconnection after stopping all subscriptions', async () => {
+  let socket; const statuses = [];
+  class Socket { constructor() { socket = this; } close() {} }
+  const c = new EventConnection({ token: 'fixture', broadcaster: 'b', user: 'b', specs: [['resubscribe', TYPES.resubscribe], ['cheer', TYPES.cheer]], Socket,
+    fetcher: async (_, req) => JSON.parse(req.body).type === 'channel.subscription.message' ? { ok: true } : { ok: false, status: 401 },
+    onStatus: text => statuses.push(text), onEvent() {} });
+  c.start();
+  await socket.onmessage({ data: JSON.stringify({ metadata: { message_type: 'session_welcome' }, payload: { session: { id: 'test' } } }) });
+  assert.equal(c.stopped, true); assert.match(statuses.at(-1), /login expired/);
+});
+test('connection details are inside Settings and page lifecycle recovery is registered', () => {
+  const fs = require('node:fs'); const path = require('node:path');
+  const html = fs.readFileSync(path.join(__dirname, '../chat.html'), 'utf8');
+  assert.match(html, /id="notifications-settings-area" hidden>[\s\S]*?id="notifications-status"/);
+  const source = fs.readFileSync(path.join(__dirname, '../notifications.js'), 'utf8');
+  for (const name of ['visibilitychange', 'pageshow', 'online']) assert.ok(source.includes(`addEventListener('${name}', resume)`));
+});
