@@ -72,7 +72,7 @@
   class EventConnection {
     constructor({ token, clientId = CLIENT_ID, broadcaster, user, specs, onEvent, onStatus, fetcher = fetch, Socket = WebSocket }) {
       Object.assign(this, { token, clientId, broadcaster, user, specs, onEvent, onStatus, fetcher, Socket });
-      this.sockets = new Set(); this.timers = new Map(); this.stopped = false; this.retry = 0; this.generation = 0;
+      this.sockets = new Set(); this.timers = new Map(); this.deadlines = new Map(); this.stopped = false; this.retry = 0; this.generation = 0;
     }
     start() { this.open('wss://eventsub.wss.twitch.tv/ws', false); }
     stop() {
@@ -80,11 +80,27 @@
       clearTimeout(this.retryTimer);
       for (const timer of this.timers.values()) clearTimeout(timer);
       this.timers.clear();
+      this.deadlines.clear();
       for (const s of this.sockets) { s.onclose = null; s.close(); }
       this.sockets.clear();
     }
+    recover() {
+      if (this.stopped) return false;
+      const healthy = [...this.sockets].some(s => (s.readyState === 0 || s.readyState === 1) && (this.deadlines.get(s) || 0) > Date.now());
+      if (healthy) return true;
+      // Timers and socket state may be stale after an iPad browser was suspended.
+      this.generation++;
+      clearTimeout(this.retryTimer);
+      for (const timer of this.timers.values()) clearTimeout(timer);
+      this.timers.clear(); this.deadlines.clear();
+      for (const s of this.sockets) { s.onclose = null; s.onmessage = null; s.close(); }
+      this.sockets.clear(); this.active = null;
+      this.onStatus('Reconnecting…'); this.start();
+      return true;
+    }
     heartbeat(socket, seconds) {
       clearTimeout(this.timers.get(socket));
+      this.deadlines.set(socket, Date.now() + (seconds + 3) * 1000);
       this.timers.set(socket, setTimeout(() => socket.close(), (seconds + 3) * 1000));
     }
     open(url, migration, oldSocket) {
@@ -101,8 +117,8 @@
           seconds = m.payload.session.keepalive_timeout_seconds || 10;
           this.heartbeat(socket, seconds); this.active = socket;
           if (migration) {
-            if (oldSocket) { oldSocket.onclose = null; oldSocket.close(); this.sockets.delete(oldSocket); clearTimeout(this.timers.get(oldSocket)); this.timers.delete(oldSocket); }
-            this.onStatus(this.connectedStatus || 'Events connected.');
+            if (oldSocket) { oldSocket.onclose = null; oldSocket.close(); this.sockets.delete(oldSocket); clearTimeout(this.timers.get(oldSocket)); this.timers.delete(oldSocket); this.deadlines.delete(oldSocket); }
+            this.onStatus(this.connectedStatus || 'Connecting…', this.subscriptionResults);
             if (this.subscriptionFailures) await this.subscribe(m.payload.session.id, socket);
           } else await this.subscribe(m.payload.session.id, socket);
         } else if (type === 'notification') { this.heartbeat(socket, seconds); this.onEvent(m); }
@@ -118,12 +134,13 @@
       };
       socket.onclose = ({ code }) => {
         clearTimeout(this.timers.get(socket)); this.timers.delete(socket); this.sockets.delete(socket);
+        this.deadlines.delete(socket);
         if (this.stopped) return;
         // A live migration socket will take over without creating fresh subscriptions.
         if (this.sockets.size) return;
         clearTimeout(this.retryTimer);
-        if (code === 4001) { this.onStatus('Event connection rejected. Reconnect Twitch in setup.'); return; }
-        this.onStatus('');
+        if (code === 4001) { this.stop(); this.onStatus('Connection rejected. Reconnect notifications.'); return; }
+        this.onStatus('Reconnecting…');
         this.retryTimer = setTimeout(() => this.start(), Math.min(60000, 1000 * 2 ** this.retry++) + Math.random() * 500);
       };
     }
@@ -145,10 +162,12 @@
       if (this.stopped || generation !== this.generation || !this.sockets.has(socket)) return;
       const enabled = results.filter(r => r.ok).map(r => TYPES[r.kind][0]);
       const failed = results.filter(r => !r.ok).map(r => TYPES[r.kind][0]);
-      this.connectedStatus = 'Connected events: ' + (enabled.join(', ') || 'none') + (failed.length ? '. Unavailable: ' + failed.join(', ') + '. Check broadcaster permissions in setup.' : '.');
-      this.onStatus(this.connectedStatus);
+      this.connectedStatus = enabled.length ? (failed.length ? 'Partly connected' : 'Connected') : 'Not connected';
+      this.subscriptionResults = results;
+      this.onStatus(this.connectedStatus, results);
       if (enabled.length) this.retry = 0;
-      if (results.some(r => r.auth) || (!enabled.length && !results.some(r => r.transient))) this.stop();
+      if (results.some(r => r.auth)) { this.stop(); this.onStatus('Twitch login expired. Reconnect Twitch in setup.'); }
+      else if (!enabled.length && !results.some(r => r.transient)) this.stop();
       else if (!enabled.length) socket.close();
       else if (results.some(r => r.transient)) {
         const delay = Math.min(60000, 5000 * 2 ** (this.subscriptionFailures || 0));
@@ -162,6 +181,7 @@
   if (!root.document) return;
   let store, channel = '', connection, epoch = 0, view = 'pending', limit = 30;
   let bootstrapRunning = false, bootstrapRetry, bootstrapFailures = 0;
+  let bootstrapStarted = 0, bootstrapController;
   let aiQueue = [], aiRunning = false, controller;
   const cards = new Map();
   const speakingEvents = new Set();
@@ -342,24 +362,36 @@
     if (channelChanged) { controller?.abort(); aiQueue = []; cards.clear(); $('notifications-list').replaceChildren(); }
     channel = channelName;
     if (channelChanged) store = new Store(localStorage, channel, feedback);
-    render();
+    if (channelChanged) render();
+    $('notifications-resub-status').textContent = 'Resubscriptions: not connected';
     const token = localStorage.getItem('twitch_token');
     if (!token) { status('Connect Twitch in setup to enable event notifications. Saved notifications remain available.'); return; }
     status('Connecting Twitch events…');
     bootstrapRunning = true;
+    bootstrapStarted = Date.now();
+    const abort = new AbortController(); bootstrapController = abort;
+    const timeout = setTimeout(() => abort.abort(), 15000);
     try {
-      const valid = await fetch('https://id.twitch.tv/oauth2/validate', { headers: { Authorization: 'OAuth ' + token } });
+      const valid = await fetch('https://id.twitch.tv/oauth2/validate', { signal: abort.signal, headers: { Authorization: 'OAuth ' + token } });
       if (!valid.ok) throw Object.assign(new Error('Twitch login could not be validated. Reconnect Twitch in setup.'), { retry: valid.status === 429 || valid.status >= 500 });
       const auth = await valid.json();
       const clientId = auth.client_id;
-      const users = await fetch('https://api.twitch.tv/helix/users?login=' + encodeURIComponent(channel), { headers: { Authorization: 'Bearer ' + token, 'Client-Id': clientId } });
+      const users = await fetch('https://api.twitch.tv/helix/users?login=' + encodeURIComponent(channel), { signal: abort.signal, headers: { Authorization: 'Bearer ' + token, 'Client-Id': clientId } });
       if (!users.ok) throw Object.assign(new Error('Could not find the Twitch channel. Check setup and reconnect Twitch.'), { retry: users.status === 429 || users.status >= 500 });
       const broadcaster = (await users.json()).data?.[0]?.id;
       if (!broadcaster) throw Object.assign(new Error('Twitch channel not found.'), { retry: false });
       if (request !== epoch) return;
       const specs = Object.entries(TYPES).filter(([kind, spec]) => (!spec[3] || auth.scopes?.includes(spec[3])) && (['raid', 'follow'].includes(kind) || auth.user_id === broadcaster));
+      $('notifications-resub-status').textContent = specs.some(([kind]) => kind === 'resubscribe') ? 'Resubscriptions: connecting…' : 'Resubscriptions: reconnect Twitch in setup as the broadcaster with subscription permission.';
       connection = new EventConnection({ token, clientId, broadcaster, user: auth.user_id, specs,
-        onStatus: text => { if (request === epoch) status(text); },
+        onStatus: (text, results) => {
+          if (request !== epoch) return;
+          status(text);
+          const resub = results?.find(r => r.kind === 'resubscribe');
+          if (resub) $('notifications-resub-status').textContent = resub.ok ? 'Resubscriptions: connected' : 'Resubscriptions: unavailable. Reconnect Twitch in setup.';
+          else if (!results && specs.some(([kind]) => kind === 'resubscribe') && text !== 'Connected' && text !== 'Partly connected') $('notifications-resub-status').textContent = 'Resubscriptions: not connected';
+          else if (!results && specs.some(([kind]) => kind === 'resubscribe') && (text === 'Connected' || text === 'Partly connected')) $('notifications-resub-status').textContent = 'Resubscriptions: connected';
+        },
         onEvent: message => {
           if (request !== epoch) return;
           const event = normalize(message, channel);
@@ -376,7 +408,15 @@
         status((e.message || 'Events unavailable.') + (retry ? ' Retrying event connection. Saved notifications remain available.' : ''));
         if (retry) bootstrapRetry = setTimeout(() => connect(channel), Math.min(60000, 5000 * 2 ** bootstrapFailures++));
       }
-    } finally { if (request === epoch) bootstrapRunning = false; }
+    } finally { clearTimeout(timeout); if (request === epoch) { bootstrapRunning = false; bootstrapController = null; } }
+  }
+  function resume() {
+    if (document.visibilityState === 'hidden' || !channel) return;
+    if (bootstrapRunning) {
+      if (Date.now() - bootstrapStarted < 15000) return;
+      bootstrapController?.abort(); epoch++; bootstrapRunning = false;
+    }
+    if (!connection?.recover()) connect(channel);
   }
   root.StreamNotifications = { connect };
   document.addEventListener('DOMContentLoaded', () => {
@@ -389,8 +429,12 @@
     $('notifications-more').onclick = () => { limit += 30; render(); };
     $('notifications-ai').onclick = () => setMode('ai');
     $('notifications-phrases').onclick = () => setMode('phrases');
+    $('notifications-reconnect').onclick = () => { bootstrapController?.abort(); epoch++; bootstrapRunning = false; connection?.stop(); connect(channel); };
     const stop = node('button', 'Stop speaking'); stop.onclick = () => stopSpeak(); $('notifications-panel').append(stop);
     if (!store) { store = new Store(localStorage, '', feedback); status('Choose a Twitch channel in setup.'); render(); }
   });
-  root.addEventListener('pagehide', () => { epoch++; clearTimeout(bootstrapRetry); connection?.stop(); controller?.abort(); store?.save(); });
+  document.addEventListener('visibilitychange', resume);
+  root.addEventListener('pageshow', resume);
+  root.addEventListener('online', resume);
+  root.addEventListener('pagehide', () => { epoch++; bootstrapRunning = false; bootstrapController?.abort(); clearTimeout(bootstrapRetry); connection?.stop(); controller?.abort(); store?.save(); });
 })(typeof window !== 'undefined' ? window : globalThis);
