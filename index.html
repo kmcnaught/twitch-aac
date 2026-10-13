@@ -564,6 +564,7 @@ function startTwitchAuth() {
     + '?client_id=' + TWITCH_CLIENT_ID
     + '&redirect_uri=' + encodeURIComponent(window.location.origin + window.location.pathname)
     + '&response_type=token'
+    + '&force_verify=true'
     + '&scope=' + encodeURIComponent('chat:read chat:edit moderator:read:followers channel:read:subscriptions bits:read channel:read:redemptions');
   window.location.href = url;
 }
@@ -583,7 +584,8 @@ async function validateTwitchToken(token) {
       return;
     }
     const data = await r.json();
-    setTwitchAuthStatus('connected as @' + data.login, 'ok');
+    const subscriptionsGranted = data.scopes?.includes('channel:read:subscriptions');
+    setTwitchAuthStatus('connected as @' + data.login + (subscriptionsGranted ? ' · subscription permission granted' : ' · subscription permission missing — reconnect and approve access'), subscriptionsGranted ? 'ok' : 'err');
     document.getElementById('twitch-disconnect-btn').style.display = '';
     // OAuth login is authoritative for the handle — overwrite whatever was set manually
     localStorage.setItem('twitch_handle', data.login);

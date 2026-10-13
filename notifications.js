@@ -25,6 +25,11 @@
   function interpolate(template, event) {
     return template.replace(/\{(username|bits|viewers|subscriptions|months|reward|points)\}/g, (_, key) => String(event[key] ?? ''));
   }
+  function subscriptionAccess(auth, broadcaster) {
+    if (!auth.user_id || !broadcaster || String(auth.user_id) !== String(broadcaster)) return { allowed: false, reason: 'The signed-in account is not the selected channel’s broadcaster.' };
+    if (!auth.scopes?.includes('channel:read:subscriptions')) return { allowed: false, reason: 'Twitch has not granted subscription permission to this login.' };
+    return { allowed: true, reason: 'Subscription permission granted.' };
+  }
   function normalize(message, channel) {
     const type = message.metadata?.subscription_type || message.payload?.subscription?.type;
     const kind = Object.keys(TYPES).find(k => TYPES[k][1] === type);
@@ -176,7 +181,7 @@
       } else this.subscriptionFailures = 0;
     }
   }
-  const api = { TYPES, DEFAULTS, interpolate, normalize, Store, EventConnection };
+  const api = { TYPES, DEFAULTS, interpolate, normalize, Store, EventConnection, subscriptionAccess };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (!root.document) return;
   let store, channel = '', connection, epoch = 0, view = 'pending', limit = 30;
@@ -365,6 +370,7 @@
     if (channelChanged) render();
     $('notifications-resub-status').textContent = 'Resubscriptions: not connected';
     const token = localStorage.getItem('twitch_token');
+    $('notifications-account-status').textContent = token ? `Verifying login… · Channel: @${channel}` : 'Not signed in';
     if (!token) { status('Connect Twitch in setup to enable event notifications. Saved notifications remain available.'); return; }
     status('Connecting Twitch events…');
     bootstrapRunning = true;
@@ -381,8 +387,10 @@
       const broadcaster = (await users.json()).data?.[0]?.id;
       if (!broadcaster) throw Object.assign(new Error('Twitch channel not found.'), { retry: false });
       if (request !== epoch) return;
-      const specs = Object.entries(TYPES).filter(([kind, spec]) => (!spec[3] || auth.scopes?.includes(spec[3])) && (['raid', 'follow'].includes(kind) || auth.user_id === broadcaster));
-      $('notifications-resub-status').textContent = specs.some(([kind]) => kind === 'resubscribe') ? 'Resubscriptions: connecting…' : 'Resubscriptions: reconnect Twitch in setup as the broadcaster with subscription permission.';
+      const access = subscriptionAccess(auth, broadcaster);
+      $('notifications-account-status').textContent = `Signed in: @${auth.login || 'unknown'} · Channel: @${channel}`;
+      const specs = Object.entries(TYPES).filter(([kind, spec]) => (!spec[3] || auth.scopes?.includes(spec[3])) && (['raid', 'follow'].includes(kind) || String(auth.user_id) === String(broadcaster)));
+      $('notifications-resub-status').textContent = access.allowed ? 'Resubscriptions: connecting…' : 'Resubscriptions: ' + access.reason;
       connection = new EventConnection({ token, clientId, broadcaster, user: auth.user_id, specs,
         onStatus: (text, results) => {
           if (request !== epoch) return;
