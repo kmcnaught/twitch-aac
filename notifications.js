@@ -29,7 +29,7 @@
     if (String(user).toLowerCase() !== 'eggbotreal' || typeof text !== 'string') return null;
     // Twitch /me messages carry a CTCP ACTION envelope around the announcement.
     text = text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1').trim();
-    if (!text || /^(?:\p{Extended_Pictographic}\uFE0F?\s*)*dad\s+joke\s*:/iu.test(text) || text.startsWith('!') || /^I have quadriplegic cerebral palsy\b/i.test(text)) return null;
+    if (!text || /^(?:\p{Extended_Pictographic}\uFE0F?\s*)*dad\s+joke\s*:/iu.test(text) || text.startsWith('!') || /^I have quadriplegic cerebral palsy\b/i.test(text) || /^I can['’]t talk with my mouth\b/i.test(text)) return null;
     const name = '@?([a-zA-Z0-9_]{1,25})';
     let kind, match, extra = {};
     if ((match = text.match(new RegExp('^' + name + ' followed!\\.?$')))) kind = 'follow';
