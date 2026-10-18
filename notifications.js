@@ -25,6 +25,8 @@
   const BOT_KINDS = new Set(['follow', 'subscribe', 'resubscribe', 'gift', 'raid']);
   function parseBotAnnouncement(user, text, channel, messageId, timestamp) {
     if (String(user).toLowerCase() !== 'eggbotreal' || typeof text !== 'string') return null;
+    // Twitch /me messages carry a CTCP ACTION envelope around the announcement.
+    text = text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1').trim();
     const name = '@?([a-zA-Z0-9_]{1,25})';
     let kind, match, extra = {};
     if ((match = text.match(new RegExp('^' + name + ' followed!\\.?$')))) kind = 'follow';

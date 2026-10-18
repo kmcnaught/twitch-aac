@@ -15,7 +15,7 @@ async function load() {
     let socket, chatSocket, counter = 0, aiCount = 0;
     window.sendBot = () => {
       const messages = ['TestFollower followed!', "TestGifter gifted a Tier 1 sub to TestRecipient CrreamAwk They've gifted 47 subs in total!", 'TestResubscriber resubscribed with Prime (7 months) CrreamAwk Hello!', 'TestSubscriber subscribed with Tier 2.', 'TestRaider is raiding with a party of 25!'];
-      chatSocket?.onmessage?.({data:messages.map((text,i)=>`@id=fixture-${Date.now()}-${i};tmi-sent-ts=${Date.now()} :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #testchannel :${text}`).join('\r\n')});
+      chatSocket?.onmessage?.({data:messages.map((text,i)=>`@id=fixture-${Date.now()}-${i};tmi-sent-ts=${Date.now()} :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #testchannel :\x01ACTION ${text}\x01`).join('\r\n')});
       window.sendRaid();
     };
     window.sendRaid = () => socket?.onmessage?.({data:JSON.stringify({metadata:{message_type:'notification',message_id:'raid-'+Date.now(),subscription_type:'channel.raid',message_timestamp:new Date().toISOString()},payload:{event:{from_broadcaster_user_name:'TestRaider',viewers:25}}})});
