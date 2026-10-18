@@ -53,6 +53,13 @@ test('configured disability command response is excluded without storing persona
   const prefix = ['I have', 'quadriplegic', 'cerebral palsy'].join(' ');
   assert.equal(parseBotAnnouncement('eggbotreal', prefix + ', test explanation.', 'fixture', 'id'), null);
   assert.equal(parseBotAnnouncement('eggbotreal', '\x01ACTION ' + prefix + ', test explanation.\x01', 'fixture', 'id'), null);
+  for (const apostrophe of ["'", '’']) {
+    const continuation = 'I can' + apostrophe + 't talk with my mouth, test continuation.';
+    for (const text of [continuation, '\x01ACTION ' + continuation + '\x01']) {
+      assert.equal(parseBotAnnouncement('eggbotreal', text, 'fixture', 'continuation'), null);
+    }
+  }
+  assert.equal(parseBotAnnouncement('eggbotreal', 'A stream goal was reached!', 'fixture', 'next').kind, 'bot');
 });
 test('bot message IDs persist for duplicate suppression without merging distinct gifts', () => {
   const saved = new Map(); const disk = { getItem:k=>saved.get(k), setItem:(k,v)=>saved.set(k,v) };
