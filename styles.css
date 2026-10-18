@@ -909,6 +909,8 @@
 .notification-card h3 { margin-top: 0; overflow-wrap: anywhere; }
 .notification-outcome { color: var(--muted); }
 #notifications-feedback { color: var(--accent2); }
+#notifications-panel .notification-bot-choice { flex-direction: row; align-items: center; min-height: 60px; padding: 16px; border: 2px solid var(--border-ui); border-radius: 10px; cursor: pointer; }
+#notifications-use-bot { width: 28px; height: 28px; flex-shrink: 0; accent-color: var(--accent); }
 @media (max-width: 700px) { #notifications-panel { padding: 10px; } .notification-toolbar button { flex: 1; } #notifications-button { margin-left: 0; } }
 @media (max-width: 700px) {
   #fs-body:has(#notifications-panel:not([hidden])) #fs-chat-panel:not(.closed) { width: clamp(140px, 30vw, 210px); }
