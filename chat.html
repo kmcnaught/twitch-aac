@@ -43,9 +43,9 @@
         <p id="notifications-feedback" role="status"></p>
         <div id="notifications-settings-area" hidden>
           <h3>Notification source</h3>
-          <label class="notification-bot-choice"><input type="checkbox" id="notifications-use-bot" checked> Use eggbotreal announcements for follows, subscriptions, resubscriptions, gifts and raids</label>
+          <label class="notification-bot-choice"><input type="checkbox" id="notifications-use-bot" checked> Send eggbotreal posts to notifications</label>
           <p id="notifications-bot-status">Waiting for Twitch chat to connect.</p>
-          <p>These five types use only the bot when enabled, avoiding duplicate direct Twitch alerts. Bits and channel points still use Twitch events. Announcements must arrive while chat is connected.</p>
+          <p>Excludes Dad Joke: posts, !commands and Twitch replies to !commands. Recognised follows, subscriptions, gifts and raids keep their event details; other posts appear as Bot messages. Chat must be connected.</p>
           <h3>Direct Twitch event connection</h3>
           <p id="notifications-status">Not connected</p>
           <p id="notifications-account-status"></p>
@@ -380,7 +380,8 @@ function connect(rawCh) {
       const tags = Object.fromEntries((raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '').split(';').map(tag => tag.split('=')));
       const sentAt = Number(tags['tmi-sent-ts']);
       const time = Number.isFinite(sentAt) && sentAt > 0 && sentAt <= 8640000000000000 ? new Date(sentAt).toISOString() : undefined;
-      window.StreamNotifications?.receiveChat(msg.user, msg.text, ch, tags.id, time);
+      const parentBody = (tags['reply-parent-msg-body'] || '').replace(/\\s/g, ' ').trimStart();
+      window.StreamNotifications?.receiveChat(msg.user, msg.text, ch, tags.id, time, parentBody.startsWith('!'));
       addMsg(msg.user, msg.text, msg.emotesTag, 'twitch');
     }
   }

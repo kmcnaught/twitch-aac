@@ -2,6 +2,10 @@
 
 ## Eggbot chat announcements
 
+All other posts from eggbotreal now become **Bot message** notifications, with the original text visible and the usual editable Speak/Dismiss response. Saved phrases can be mapped to Bot message (or tagged `event:bot`); AI mode uses the original message as untrusted event data. Phrase-bank mode still makes no notification AI requests.
+
+Messages beginning with `Dad Joke:` (case-insensitive) or `!` (including `!Disabled`) are excluded, after removing any /me wrapper. Bot messages tagged by Twitch as replies to a `!command` are also excluded. A plain, unthreaded command response cannot be identified from reply metadata; its response wording would need a separate filter. Ordinary bot posts containing a command name elsewhere remain available.
+
 By default, StreamAAC reads announcements from the exact Twitch login `eggbotreal` for follows, subscriptions, resubscriptions, individual gifts and raids. This uses the existing Twitch chat connection and works even if direct EventSub is unavailable or subscription permissions are missing. It only catches new announcements while chat is connected; it cannot retrieve earlier bot messages. Bits and channel points still require direct Twitch events until their bot formats are configured in code.
 
 In Notifications Settings, the large **Use eggbotreal announcements** control is saved per channel. When enabled, those five event types use only the bot; their direct Twitch subscriptions are excluded and any overlapping deliveries are ignored. Switch it off to use the direct Twitch subscriptions instead. Existing pending notifications and history remain available.
