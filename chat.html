@@ -42,7 +42,11 @@
         <div class="notification-toolbar"><button id="notifications-pending" aria-pressed="true">Pending</button><button id="notifications-history" aria-pressed="false">History</button><button id="notifications-settings" aria-pressed="false">Settings</button></div>
         <p id="notifications-feedback" role="status"></p>
         <div id="notifications-settings-area" hidden>
-          <h3>Twitch event connection</h3>
+          <h3>Notification source</h3>
+          <label class="notification-bot-choice"><input type="checkbox" id="notifications-use-bot" checked> Use eggbotreal announcements for follows, subscriptions, resubscriptions, gifts and raids</label>
+          <p id="notifications-bot-status">Waiting for Twitch chat to connect.</p>
+          <p>These five types use only the bot when enabled, avoiding duplicate direct Twitch alerts. Bits and channel points still use Twitch events. Announcements must arrive while chat is connected.</p>
+          <h3>Direct Twitch event connection</h3>
           <p id="notifications-status">Not connected</p>
           <p id="notifications-account-status"></p>
           <p id="notifications-resub-status">Resubscriptions: not connected</p>
@@ -50,9 +54,9 @@
           <h3>Responses for <span id="notifications-channel"></span></h3>
           <div class="notification-toolbar"><button id="notifications-ai" aria-pressed="false">AI-generated suggestions</button><button id="notifications-phrases" aria-pressed="true">Phrase bank only</button></div>
           <p>Review and edit every response before speaking. Phrase bank only makes no notification AI requests. Settings are remembered for this channel.</p>
-          <h3>Event phrases</h3><p>Choose an existing saved phrase for each event. Placeholders: {username}, {bits}, {viewers}, {subscriptions}, {months}, {reward}, {points}. Edit or add phrases using the existing phrases manager.</p>
+          <h3>Event phrases</h3><p>Choose an existing saved phrase for each event. Placeholders: {username}, {bits}, {viewers}, {subscriptions}, {months}, {reward}, {points}, {recipient}. Edit or add phrases using the existing phrases manager.</p>
           <div id="notifications-mappings"></div>
-          <p>For all events, connect Twitch as this channel's broadcaster with notification permissions. Followers also work for an authorized moderator. Resubscriptions arrive when a viewer shares a resubscription message.</p>
+          <p>Direct Twitch events require broadcaster permissions (followers also support an authorized moderator). Eggbot announcements only need a working chat connection.</p>
           <a href="index.html">Open setup to reconnect Twitch</a>
         </div>
         <div id="notifications-list"></div>
@@ -340,13 +344,14 @@ function connect(rawCh) {
       sock.send('PASS oauth:justinfan12345');
       sock.send('NICK justinfan12345');
     }
+    sock.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
     sock.send('JOIN #' + ch);
   };
-  ws.onmessage = (e) => {
-    const raw = e.data.trim();
-    console.log('[Twitch IRC]', raw);
-    if (raw.includes('PING')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
-    if (raw.includes('NOTICE') && (raw.includes('Login authentication failed') || raw.includes('Login unsuccessful') || raw.includes('Improperly formatted auth'))) {
+  ws.onmessage = (e) => { for (const raw of e.data.split(/\r?\n/).filter(Boolean)) handleIrcLine(raw); };
+  function handleIrcLine(raw) {
+    if (ws !== sock) return;
+    if (raw.startsWith('PING ')) { if (sock.readyState === 1) sock.send('PONG :tmi.twitch.tv'); return; }
+    if (/^:\S+ NOTICE /.test(raw) && (raw.includes('Login authentication failed') || raw.includes('Login unsuccessful') || raw.includes('Improperly formatted auth'))) {
       console.warn('[Twitch IRC] Auth failed — clearing token and falling back to anonymous');
       localStorage.removeItem('twitch_token');
       setStatus('warn', 'Twitch auth failed — speaking only (not posting to chat)');
@@ -355,13 +360,15 @@ function connect(rawCh) {
       sock.close();
       ws = null;
       isConnected = false;
+      window.StreamNotifications?.chatStatus(ch, false);
       updateSuggestEnabled();
       reconnectTimer = setTimeout(() => connect(currentChannel), 1000);
       return;
     }
-    if (raw.includes('366')) {
+    if (/^:\S+ 366 /.test(raw)) {
       const wasReconnect = everConnected && !isConnected;
       isConnected = true;
+      window.StreamNotifications?.chatStatus(ch, true);
       everConnected = true;
       setStatus('connected', '#' + ch);
       updateSuggestEnabled();
@@ -369,8 +376,14 @@ function connect(rawCh) {
       if (wasReconnect) addChatDivider('— reconnected —');
     }
     const msg = parseIrcMsg(raw);
-    if (msg) addMsg(msg.user, msg.text, msg.emotesTag, 'twitch');
-  };
+    if (msg) {
+      const tags = Object.fromEntries((raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '').split(';').map(tag => tag.split('=')));
+      const sentAt = Number(tags['tmi-sent-ts']);
+      const time = Number.isFinite(sentAt) && sentAt > 0 && sentAt <= 8640000000000000 ? new Date(sentAt).toISOString() : undefined;
+      window.StreamNotifications?.receiveChat(msg.user, msg.text, ch, tags.id, time);
+      addMsg(msg.user, msg.text, msg.emotesTag, 'twitch');
+    }
+  }
   ws.onerror = (e) => {
     console.error('[Twitch IRC] WebSocket error', e);
     isConnected = false;
@@ -382,6 +395,7 @@ function connect(rawCh) {
   ws.onclose = (e) => {
     console.log('[Twitch IRC] WebSocket closed — code:', e.code, 'reason:', JSON.stringify(e.reason), 'wasClean:', e.wasClean);
     if (ws !== sock) return;
+    window.StreamNotifications?.chatStatus(ch, false);
     isConnected = false;
     updateSuggestEnabled();
     if (everConnected) {
