@@ -17,6 +17,15 @@ test('all five provided eggbot formats map to notifications', () => {
     assert.equal(event.channel, 'fixture'); assert.equal(event.eventOrigin, 'eggbotreal');
   }
 });
+test('Twitch /me ACTION wrappers are accepted for all five bot announcements', () => {
+  for (const [text, kind] of examples) {
+    const event = parseBotAnnouncement('eggbotreal', '\x01ACTION ' + text + '\x01', 'fixture', kind);
+    assert.ok(event, `Missing action notification for ${kind}`);
+    assert.equal(event.kind, kind); assert.equal(event.username, 'FixtureUser');
+  }
+  assert.equal(parseBotAnnouncement('eggbotreal', '\x01ACTION FixtureFollower followed!\x01', 'fixture', 'action-follow').username, 'FixtureFollower');
+  assert.equal(parseBotAnnouncement('viewer', '\x01ACTION FixtureUser followed!\x01', 'fixture', 'spoof'), null);
+});
 test('gift lifetime total is not the current gift count, and resub messages omit the emote', () => {
   const gift = parseBotAnnouncement('eggbotreal', examples[1][0], 'fixture', 'gift');
   assert.equal(gift.subscriptions, 1); assert.equal(gift.lifetimeGifts, 47); assert.equal(gift.recipient, 'FixtureRecipient'); assert.equal(gift.tierLabel, 'Tier 1');
@@ -50,7 +59,7 @@ test('chat ingestion handles batched IRC lines before normal bot exclusion', () 
   vm.runInContext(core.slice(core.indexOf('function parseIrcMsg('), core.indexOf('// ── SPEECH ──')), context);
   vm.runInContext(connectCode + "\nconnect('fixture');", context); socket.onopen();
   assert.ok(sent.includes('CAP REQ :twitch.tv/tags twitch.tv/commands'));
-  const lines = examples.map(([text], i)=>`@id=fixture-${i};tmi-sent-ts=1792324800000 :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #fixture :${text}`);
+  const lines = examples.map(([text], i)=>`@id=fixture-${i};tmi-sent-ts=1792324800000 :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #fixture :\x01ACTION ${text}\x01`);
   socket.onmessage({data: 'PING :tmi.twitch.tv\r\n' + lines.join('\r\n') + '\r\n'});
   assert.equal(received.length, 5); assert.equal(added.length, 5); assert.ok(sent.includes('PONG :tmi.twitch.tv'));
   assert.equal(received[0][3], 'fixture-0');
