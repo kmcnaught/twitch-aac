@@ -42,11 +42,17 @@ test('only the real bot login is accepted; other wording becomes a bot message',
   assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser resubscribed with Tier 1 (12 months) CrreamAwk', 'fixture', 'id').supporterMessage, '');
 });
 test('Dad Joke posts and commands are excluded in plain and ACTION messages', () => {
-  for (const text of ['Dad Joke: Something funny', ' dad joke : Another joke ', '!socials', '!Disabled', '  !game ', '']) {
+  for (const text of ['Dad Joke: Something funny', '😂 Dad Joke: A test joke', ' dad joke : Another joke ', '!socials', '!Disabled', '!donate', '  !game ', '']) {
     for (const message of [text, '\x01ACTION ' + text + '\x01']) assert.equal(parseBotAnnouncement('eggbotreal', message, 'fixture', 'id'), null);
   }
   const e = parseBotAnnouncement('eggbotreal', 'FixtureViewer redeemed a reward!', 'fixture', 'id');
   assert.equal(e.kind, 'bot');assert.equal(e.username,'eggbotreal');assert.equal(e.botText,'FixtureViewer redeemed a reward!');
+});
+
+test('configured disability command response is excluded without storing personal reply text', () => {
+  const prefix = ['I have', 'quadriplegic', 'cerebral palsy'].join(' ');
+  assert.equal(parseBotAnnouncement('eggbotreal', prefix + ', test explanation.', 'fixture', 'id'), null);
+  assert.equal(parseBotAnnouncement('eggbotreal', '\x01ACTION ' + prefix + ', test explanation.\x01', 'fixture', 'id'), null);
 });
 test('bot message IDs persist for duplicate suppression without merging distinct gifts', () => {
   const saved = new Map(); const disk = { getItem:k=>saved.get(k), setItem:(k,v)=>saved.set(k,v) };
