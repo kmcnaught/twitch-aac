@@ -14,7 +14,7 @@ async function load() {
     Object.defineProperty(window, 'localStorage', { value: { getItem: k => saved.get(k) ?? null, setItem(k,v) { saved.set(k,String(v)); parent.sessionStorage.setItem('notification_test_storage', JSON.stringify(Object.fromEntries(saved))); }, removeItem(k) { saved.delete(k); } } });
     let socket, chatSocket, counter = 0, aiCount = 0;
     window.sendBot = () => {
-      const messages = ['TestFollower followed!', "TestGifter gifted a Tier 1 sub to TestRecipient CrreamAwk They've gifted 47 subs in total!", 'TestResubscriber resubscribed with Prime (7 months) CrreamAwk Hello!', 'TestSubscriber subscribed with Tier 2.', 'TestRaider is raiding with a party of 25!'];
+      const messages = ['TestFollower followed!', "TestGifter gifted a Tier 1 sub to TestRecipient CrreamAwk They've gifted 47 subs in total!", 'TestResubscriber resubscribed with Prime (7 months) CrreamAwk Hello!', 'TestSubscriber subscribed with Tier 2.', 'TestRaider is raiding with a party of 25!', 'A stream goal was reached!', 'Dad Joke: Leave this out.', '!Disabled'];
       chatSocket?.onmessage?.({data:messages.map((text,i)=> i === 0
         ? `@id=fixture-${Date.now()}-${i};tmi-sent-ts=${Date.now()} :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #testchannel :\x01ACTION ${text}\x01`
         : `@id=fixture-${Date.now()}-${i};login=eggbotreal;msg-id=announcement;tmi-sent-ts=${Date.now()} :tmi.twitch.tv USERNOTICE #testchannel :${text}`).join('\r\n')});
