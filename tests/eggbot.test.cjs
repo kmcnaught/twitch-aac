@@ -59,7 +59,9 @@ test('chat ingestion handles batched IRC lines before normal bot exclusion', () 
   vm.runInContext(core.slice(core.indexOf('function parseIrcMsg('), core.indexOf('// ── SPEECH ──')), context);
   vm.runInContext(connectCode + "\nconnect('fixture');", context); socket.onopen();
   assert.ok(sent.includes('CAP REQ :twitch.tv/tags twitch.tv/commands'));
-  const lines = examples.map(([text], i)=>`@id=fixture-${i};tmi-sent-ts=1792324800000 :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #fixture :\x01ACTION ${text}\x01`);
+  const lines = examples.map(([text], i)=> i === 0
+    ? `@id=fixture-${i};tmi-sent-ts=1792324800000 :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #fixture :\x01ACTION ${text}\x01`
+    : `@id=fixture-${i};login=eggbotreal;msg-id=announcement;tmi-sent-ts=1792324800000 :tmi.twitch.tv USERNOTICE #fixture :${text}`);
   socket.onmessage({data: 'PING :tmi.twitch.tv\r\n' + lines.join('\r\n') + '\r\n'});
   assert.equal(received.length, 5); assert.equal(added.length, 5); assert.ok(sent.includes('PONG :tmi.twitch.tv'));
   assert.equal(received[0][3], 'fixture-0');
@@ -83,4 +85,16 @@ test('bot notifications work without a Twitch token or AI request and respect th
   await context.StreamNotifications.connect('otherchannel');await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal',examples[0][0],'fixture','three');
   assert.equal(JSON.parse(saved.get('streamaac_notifications_v1:fixture')).events.length,1);
+});
+test('announcement parsing verifies USERNOTICE type and sender login rather than display name', () => {
+  const core = fs.readFileSync(require('node:path').join(__dirname,'../chat-core.js'),'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(core.slice(core.indexOf('function parseIrcMsg('),core.indexOf('// ── SPEECH ──')),context);
+  const line = tags => `@${tags} :tmi.twitch.tv USERNOTICE #fixture :FixtureUser subscribed with Prime.`;
+  assert.equal(context.parseIrcMsg(line('msg-id=sub;login=eggbotreal')),null);
+  assert.equal(context.parseIrcMsg(line('msg-id=announcement;display-name=eggbotreal')),null);
+  const spoof = context.parseIrcMsg(line('msg-id=announcement;login=viewer;display-name=eggbotreal'));
+  assert.equal(spoof.user,'viewer');assert.equal(parseBotAnnouncement(spoof.user,spoof.text,'fixture','id'),null);
+  const real = context.parseIrcMsg(line('msg-id=announcement;login=eggbotreal;emotes='));
+  assert.equal(parseBotAnnouncement(real.user,real.text,'fixture','id').kind,'subscribe');
 });

@@ -70,7 +70,13 @@ function isExcluded(user, rawText) {
 // ── IRC MESSAGE PARSING ──
 function parseIrcMsg(raw) {
   const m = raw.match(/^(@\S+ )?:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.+)/);
-  if (!m) return null;
+  if (!m) {
+    const announcement = raw.match(/^@(\S+) :tmi\.twitch\.tv USERNOTICE #\w+ :(.+)$/);
+    if (!announcement) return null;
+    const tags = Object.fromEntries(announcement[1].split(';').map(tag => tag.split('=')));
+    if (tags['msg-id'] !== 'announcement' || !/^[a-zA-Z0-9_]{1,25}$/.test(tags.login || '')) return null;
+    return { user: tags.login, text: announcement[2], emotesTag: tags.emotes || '' };
+  }
   const tagsStr = m[1] || '';
   const emotesMatch = tagsStr.match(/\bemotes=([^;]*)/);
   return { user: m[2], text: m[3], emotesTag: emotesMatch ? emotesMatch[1] : '' };
