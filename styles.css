@@ -1,5 +1,5 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
-  .ignored-command-settings { margin-top: 24px; }
+  .ignored-command-settings { margin-top: 0; }
   .ignored-command-settings p { margin: 12px 0; line-height: 1.6; overflow-wrap: anywhere; }
   #ignored-command-form { display: grid; gap: 12px; margin: 20px 0; }
   #ignored-command-form input, #ignored-command-form textarea { width: 100%; min-height: 60px; padding: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border-ui); border-radius: 10px; font: inherit; }
