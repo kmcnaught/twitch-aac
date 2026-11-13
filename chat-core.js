@@ -166,7 +166,26 @@ async function playElAudioAtSpeed(arrayBuffer, speed, card, token, onError, cont
   }
 }
 
-function speakBrowser(text, card) {
+function speakConfigured(text, card, onError) {
+  const key = localStorage.getItem('el_key') || '';
+  const voice = localStorage.getItem('el_voice_id') || '';
+  const source = localStorage.getItem('voice_source') || (key && voice ? 'elevenlabs' : 'browser');
+  if (source === 'elevenlabs') {
+    if (!key || !voice) {
+      clearSpeak(card);
+      if (onError) onError('Choose an ElevenLabs voice and enter its API key in Settings, or select browser voice.');
+      return;
+    }
+    return speakElevenLabs(text, key, voice, card, onError);
+  }
+  try { return speakBrowser(text, card, onError); }
+  catch {
+    clearSpeak(card);
+    if (onError) onError('Browser speech is unavailable. Check your browser voice and sound output.');
+  }
+}
+
+function speakBrowser(text, card, onError) {
   const token = ++elSpeakToken;
   const u = new SpeechSynthesisUtterance(text);
   const savedVoiceName = localStorage.getItem('browser_voice') || '';
@@ -178,7 +197,11 @@ function speakBrowser(text, card) {
   if (chosen) u.voice = chosen;
   u.rate = 0.95;
   u.onend = () => { if (token === elSpeakToken) clearSpeak(card, true); };
-  u.onerror = () => { if (token === elSpeakToken) clearSpeak(card); };
+  u.onerror = event => {
+    if (token !== elSpeakToken) return;
+    clearSpeak(card);
+    if (onError) onError('Browser speech failed (' + (event.error || 'unknown error') + '). Check your browser voice and sound output.');
+  };
   window.speechSynthesis.speak(u);
 }
 
@@ -187,12 +210,12 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
   const token = ++elSpeakToken;
   const speed = getElSpeed();
   const playbackSpeed = getElSpeedMode() === 'playback';
-  if (!playbackSpeed) {
-    // Warm up Web Audio during the fetch to avoid Firefox cutting off speech.
-    if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
-    if (elAudioCtx.state === 'suspended') elAudioCtx.resume();
-  }
   try {
+    if (!playbackSpeed) {
+      // Warm up Web Audio during the fetch to avoid Firefox cutting off speech.
+      if (!elAudioCtx || elAudioCtx.state === 'closed') elAudioCtx = new AudioContext();
+      if (elAudioCtx.state === 'suspended') await elAudioCtx.resume();
+    }
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
@@ -208,7 +231,7 @@ async function speakElevenLabs(text, key, voiceId, card, onError) {
       })
     });
     if (token !== elSpeakToken) return;  // superseded by a newer call
-    if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
+    if (!r.ok) throw new Error(r.status === 401 ? 'ElevenLabs rejected the API key. Check your key and its permissions in Settings, or select browser voice.' : `ElevenLabs speech failed (${r.status}). Check your account and voice settings.`);
     const arrayBuffer = await r.arrayBuffer();
     if (token !== elSpeakToken) return;
     if (playbackSpeed) {
