@@ -38,6 +38,21 @@
   if (typeof document === 'undefined') return;
   document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('ignored-command-list'); if (!list) return;
+    const profilesPanel = document.getElementById('profiles-panel');
+    const commandsPanel = document.getElementById('ignored-commands-panel');
+    function showPanel() {
+      if (!profilesPanel || !commandsPanel) return;
+      const commandsOpen = root.location.hash === '#ignored-commands';
+      profilesPanel.hidden = commandsOpen;
+      commandsPanel.hidden = !commandsOpen;
+      for (const [id, selected] of [['profiles-nav-link', !commandsOpen], ['ignored-commands-nav-link', commandsOpen]]) {
+        const link = document.getElementById(id);
+        link.classList.toggle('selected', selected);
+        if (selected) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+      }
+    }
+    root.addEventListener('hashchange', showPanel);
+    showPanel();
     const status = document.getElementById('ignored-command-status');
     const command = document.getElementById('ignored-command-name');
     const replies = document.getElementById('ignored-command-replies');
