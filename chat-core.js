@@ -1,5 +1,17 @@
 // ── CONFIG ──
-const PROXY_URL = 'https://anthropic-proxy.kirsty-mcnaught.workers.dev';
+function normalizeProxyUrl(value) {
+  if (!value.trim()) return '';
+  const url = new URL(value.trim());
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+    throw new Error('Use an HTTPS base URL without credentials, a query, or a fragment.');
+  }
+  return url.href.replace(/\/+$/, '');
+}
+
+function getProxyUrl() {
+  try { return normalizeProxyUrl(localStorage.getItem('service_proxy_url') || ''); }
+  catch { return ''; }
+}
 
 // ── SHARED CONSTANTS ──
 const VLENGTH = {
