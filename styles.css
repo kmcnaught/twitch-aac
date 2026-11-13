@@ -926,3 +926,7 @@
 
 #service-proxy-input, #service-proxy-token { width: 100%; box-sizing: border-box; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; }
 #service-proxy-help, #service-proxy-status { font-size: 14px; line-height: 1.5; }
+
+.voice-backup-key { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 8px 0; cursor: pointer; }
+.voice-backup-key input { width: 22px; height: 22px; flex-shrink: 0; }
+#voice-backup-status { margin: 8px 0 16px; }

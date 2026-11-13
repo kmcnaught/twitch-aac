@@ -27,7 +27,14 @@
       <div class="profiles-heading"><div><h1>Settings</h1><p>Shared across every profile in this browser.</p></div></div>
       <section class="profile-settings" id="voice-settings" aria-labelledby="voice-heading">
         <h2 id="voice-heading">Voice settings</h2>
-        <p>Voice changes are saved automatically.</p>
+        <p>Voice changes are saved automatically in this browser. Export a backup to restore them on another browser or site address.</p>
+        <div class="profile-toolbar">
+          <button class="hbtn" type="button" onclick="exportVoiceSettings()">Export voice settings</button>
+          <button class="hbtn" type="button" onclick="document.getElementById('voice-settings-file').click()">Import voice settings</button>
+        </div>
+        <label class="voice-backup-key"><input type="checkbox" id="voice-export-key"> Include ElevenLabs API key in backup (keep this file private)</label>
+        <input type="file" id="voice-settings-file" accept=".json,application/json" hidden onchange="importVoiceSettings(this)">
+        <p id="voice-backup-status" role="status" aria-live="polite"></p>
       <div class="voice-row">
         <label for="lang-select">language</label>
         <select id="lang-select" onchange="saveLangChoice()">
@@ -227,16 +234,11 @@ window.addEventListener('DOMContentLoaded', () => {
 // ── STATE ──
 let elVoices = [];
 let elGenderFilter = 'all';
-window.addEventListener('DOMContentLoaded', () => {
+function restoreVoiceSettings() {
   // Load saved ElevenLabs key
   const savedElKey = localStorage.getItem('el_key');
-  if (savedElKey) document.getElementById('el-key-input').value = savedElKey;
-  document.getElementById('el-key-input').addEventListener('input', () => {
-    localStorage.setItem('el_key', document.getElementById('el-key-input').value.trim());
-  });
-  document.getElementById('el-key-input').addEventListener('blur', () => {
-    if (document.getElementById('el-key-input').value.trim()) loadVoices();
-  });
+  document.getElementById('el-key-input').value = savedElKey || '';
+
 
   // ElevenLabs speed
   document.getElementById('el-speed-label').textContent = getElSpeed().toFixed(2) + '×';
@@ -246,9 +248,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Restore saved EL voice data if key is present
   const savedElVoices = localStorage.getItem('el_voices');
-  if (savedElKey && savedElVoices) {
+  elVoices = [];
+  if (savedElVoices) {
     try {
-      elVoices = JSON.parse(savedElVoices);
+      const cachedVoices = JSON.parse(savedElVoices);
+      elVoices = Array.isArray(cachedVoices) ? cachedVoices.filter(v => v && typeof v.voice_id === 'string' && typeof v.name === 'string') : [];
       const savedGender = localStorage.getItem('el_gender') || 'all';
       elGenderFilter = savedGender;
       document.querySelectorAll('.gpill').forEach(p =>
@@ -273,9 +277,89 @@ window.addEventListener('DOMContentLoaded', () => {
   populateBrowserVoices();
   window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
 
+  renderElVoices(localStorage.getItem('el_voice_id') || '');
+}
+window.addEventListener('DOMContentLoaded', () => {
+  restoreVoiceSettings();
   const elKey = document.getElementById('el-key-input');
+  elKey.addEventListener('input', () => localStorage.setItem('el_key', elKey.value.trim()));
+  elKey.addEventListener('blur', () => { if (elKey.value.trim()) loadVoices(); });
   initClearBtn(elKey, elKey.parentElement.querySelector('.input-clear'));
 });
+
+const VOICE_BACKUP_FIELDS = {
+  voice_lang: 'en', voice_source: 'browser', browser_voice: '', el_voice_id: '',
+  el_gender: 'all', el_model: 'eleven_turbo_v2_5', el_speed_mode: 'generation',
+  el_speed: '1.00', el_stability: '0.5', el_similarity_boost: '0.75', el_style: '0'
+};
+function validateVoiceBackup(data) {
+  if (!data || data.type !== 'streamaac-voice-settings' || data.version !== 1 ||
+      !data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))
+    throw new Error('Choose a StreamAAC voice settings backup.');
+  const settings = {};
+  for (const [key, fallback] of Object.entries(VOICE_BACKUP_FIELDS)) {
+    const value = data.settings[key] ?? fallback;
+    if (typeof value !== 'string' || value.length > 1000) throw new Error('Invalid voice setting: ' + key);
+    settings[key] = value;
+  }
+  const choices = {
+    voice_lang: ['en','fr','de','es','it','pt','nl','ja','ko','zh'],
+    voice_source: ['browser','elevenlabs'], el_gender: ['all','female','male'],
+    el_model: ['eleven_turbo_v2_5','eleven_multilingual_v2','eleven_flash_v2_5'],
+    el_speed_mode: ['generation','playback']
+  };
+  for (const [key, values] of Object.entries(choices))
+    if (!values.includes(settings[key])) throw new Error('Invalid voice setting: ' + key);
+  for (const key of ['el_speed','el_stability','el_similarity_boost','el_style']) {
+    const n = Number(settings[key]);
+    const min = key === 'el_speed' ? 0.7 : 0;
+    const max = key === 'el_speed' ? 1.2 : 1;
+    if (!settings[key].trim() || !Number.isFinite(n) || n < min || n > max)
+      throw new Error('Invalid voice setting: ' + key);
+  }
+  if (Object.hasOwn(data.settings, 'el_key')) {
+    if (typeof data.settings.el_key !== 'string' || data.settings.el_key.length > 1000 ||
+        /[^\x21-\x7e]/.test(data.settings.el_key)) throw new Error('Invalid ElevenLabs API key.');
+    settings.el_key = data.settings.el_key;
+  }
+  return settings;
+}
+function exportVoiceSettings() {
+  const status = document.getElementById('voice-backup-status');
+  try {
+    const settings = Object.fromEntries(Object.entries(VOICE_BACKUP_FIELDS).map(([key, fallback]) =>
+      [key, localStorage.getItem(key) ?? fallback]));
+    if (document.getElementById('voice-export-key').checked) settings.el_key = localStorage.getItem('el_key') || '';
+    const backup = { type: 'streamaac-voice-settings', version: 1, settings };
+    validateVoiceBackup(backup);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'streamaac-voice-settings.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = Object.hasOwn(settings, 'el_key') ? 'Voice settings exported, including your API key. Keep the file private.' : 'Voice settings exported. API key not included.';
+  } catch { status.textContent = 'Could not export voice settings. Check browser storage and try again.'; }
+}
+async function importVoiceSettings(input) {
+  const status = document.getElementById('voice-backup-status');
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    if (file.size > 100000) throw new Error('Voice settings backup is too large.');
+    const settings = validateVoiceBackup(JSON.parse(await file.text()));
+    const previous = Object.fromEntries(Object.keys(settings).map(key => [key, localStorage.getItem(key)]));
+    try { for (const [key, value] of Object.entries(settings)) localStorage.setItem(key, value); }
+    catch (error) {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+      }
+      throw error;
+    }
+    restoreVoiceSettings();
+    status.textContent = 'Voice settings imported.' + (!Object.hasOwn(settings, 'el_key') && !localStorage.getItem('el_key') && settings.voice_source === 'elevenlabs' ? ' Enter your ElevenLabs API key below.' : '');
+  } catch (error) { status.textContent = error instanceof SyntaxError ? 'That file is not valid JSON. Settings were not changed.' : error.message || 'Could not import voice settings.'; }
+  finally { input.value = ''; }
+}
+
 function setVoiceSource(btn) {
   document.querySelectorAll('.source-pills .spill').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
@@ -310,7 +394,7 @@ async function loadVoices() {
     elVoices = data.voices || [];
     localStorage.setItem('el_key', key);
     localStorage.setItem('el_voices', JSON.stringify(elVoices));
-    renderElVoices('');
+    renderElVoices(localStorage.getItem('el_voice_id') || '');
     setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
   } catch(e) {
     setVoiceStatus('failed: ' + e.message, 'err');
@@ -332,7 +416,7 @@ function renderElVoices(selectedId) {
   const genderRow  = document.getElementById('gender-row');
   const selectRow  = document.getElementById('voice-select-row');
   const sel        = document.getElementById('voice-select');
-  if (!elVoices.length) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
+  if (!elVoices.length && !selectedId) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
 
   genderRow.style.display = 'flex';
   selectRow.style.display = 'flex';
@@ -342,6 +426,13 @@ function renderElVoices(selectedId) {
     : elVoices.filter(v => (v.labels?.gender || '').toLowerCase() === elGenderFilter);
 
   sel.innerHTML = '<option value="">— browser TTS —</option>';
+  if (selectedId && !filtered.some(v => v.voice_id === selectedId)) {
+    const saved = document.createElement('option');
+    saved.value = selectedId;
+    saved.textContent = 'Saved voice (' + selectedId + ')';
+    saved.selected = true;
+    sel.appendChild(saved);
+  }
   filtered.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.voice_id;
