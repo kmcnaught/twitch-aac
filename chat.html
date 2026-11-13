@@ -6,10 +6,10 @@
 <title>StreamAAC · Chat</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=bot-announcements-1" defer></script>
+<script src="chat-core.js?v=user-proxy-1" defer></script>
 <script src="sample-phrases.js"></script>
 <script src="command-ignores.js" defer></script>
-<script src="notifications.js" defer></script>
+<script src="notifications.js?v=user-proxy-1" defer></script>
 </head>
 <body>
 
@@ -304,7 +304,34 @@ function setFsSuggestEnabled(enabled) {
   const prominent = document.getElementById('fs-suggest-prominent');
   if (prominent) prominent.disabled = !enabled;
 }
-function updateSuggestEnabled() { setFsSuggestEnabled(quietMode || isConnected || ytConnected); document.getElementById('fs-magic-btn').disabled = quietMode || !(isConnected || ytConnected); }
+function updateSuggestEnabled() {
+  const ready = !!getProxyUrl() && (isConnected || ytConnected);
+  setFsSuggestEnabled(quietMode || ready);
+  document.getElementById('fs-magic-btn').disabled = quietMode || !ready;
+  let notice = document.getElementById('proxy-notice');
+  if (!notice) {
+    notice = document.createElement('p');
+    notice.id = 'proxy-notice';
+    notice.innerHTML = 'AI is disabled. <a href="index.html">Configure your proxy in settings</a> to enable suggestions. Saved phrases and speech are still available.';
+    document.getElementById('fs-responses').before(notice);
+  }
+  notice.hidden = quietMode || !!getProxyUrl();
+}
+window.addEventListener('storage', event => {
+  if (event.key === 'service_proxy_url' || event.key === null) {
+    ++suggestionRequest;
+    ++phrasesSuggestToken;
+    suggestedPhraseIds = [];
+    ++youtubeGeneration;
+    clearTimeout(ytPollTimer);
+    ytLiveChatId = null;
+    ytNextPageToken = null;
+    ytConnected = false;
+    updateSuggestEnabled();
+    if (phrasesViewActive) renderPhrasesGrid();
+    connectYouTube();
+  }
+});
 
 // ── CONNECT ──
 function connect(rawCh) {
@@ -429,9 +456,14 @@ function extractYtVideoId(url) {
   } catch { return null; }
 }
 
+let youtubeGeneration = 0;
 async function connectYouTube() {
+  const generation = ++youtubeGeneration;
+  const proxyUrl = getProxyUrl();
   const rawUrl = (localStorage.getItem('youtube_video_url') || '').trim();
   if (!rawUrl) return;
+
+  if (!getProxyUrl()) { setYtStatus('error', 'configure proxy in settings'); return; }
 
   const videoId = extractYtVideoId(rawUrl);
   if (!videoId) {
@@ -443,10 +475,11 @@ async function connectYouTube() {
 
   try {
     const res = await fetch(
-      `${PROXY_URL}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`,
+      `${proxyUrl}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`,
       { headers: { 'x-app': 'twitch-aac' } }
     );
     const data = await res.json();
+    if (generation !== youtubeGeneration || proxyUrl !== getProxyUrl()) return;
 
     if (data.error === 'no_live_stream') {
       setYtStatus('', 'no live stream');
@@ -460,6 +493,7 @@ async function connectYouTube() {
     pollYouTubeChat(true);
 
   } catch (e) {
+    if (generation !== youtubeGeneration || proxyUrl !== getProxyUrl()) return;
     console.error('YouTube connect error:', e);
     setYtStatus('error', 'error');
     ytPollTimer = setTimeout(connectYouTube, 30000);
@@ -467,15 +501,19 @@ async function connectYouTube() {
 }
 
 async function pollYouTubeChat(skipFirstBatch) {
+  const generation = youtubeGeneration;
+  const proxyUrl = getProxyUrl();
+  if (!getProxyUrl()) { ytConnected = false; setYtStatus('error', 'configure proxy in settings'); updateSuggestEnabled(); return; }
   if (!ytLiveChatId) return;
 
   try {
-    const res = await fetch(`${PROXY_URL}/yt-chat/poll`, {
+    const res = await fetch(`${proxyUrl}/yt-chat/poll`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({ liveChatId: ytLiveChatId, pageToken: ytNextPageToken }),
     });
     const data = await res.json();
+    if (generation !== youtubeGeneration || proxyUrl !== getProxyUrl()) return;
 
     if (res.status === 403 || data.error === 'stream_ended') {
       ytConnected = false; ytLiveChatId = null; ytNextPageToken = null;
@@ -502,6 +540,7 @@ async function pollYouTubeChat(skipFirstBatch) {
     ytPollTimer = setTimeout(pollYouTubeChat, pollMs);
 
   } catch (e) {
+    if (generation !== youtubeGeneration || proxyUrl !== getProxyUrl()) return;
     console.error('YouTube poll error:', e);
     ytPollTimer = setTimeout(() => pollYouTubeChat(false), 10000);
   }
@@ -601,6 +640,7 @@ function openFsChat() {
 // ── GENERATE ──
 async function gen() {
   if (quietMode) { showQuietPhrases(); return; }
+  if (!getProxyUrl()) { updateSuggestEnabled(); return; }
   const request = ++suggestionRequest;
   const chat = chatLog.filter(m => !m.excluded).slice(-15).map(m => `${m.user}: ${m.text}`).join('\n') || '(no chat messages yet — streamer just went live)';
 
@@ -638,7 +678,7 @@ Recent chat:
 ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat messages mention or address them by name, treat this as directly relevant.' : ''}${ctx ? '\nContext: '+ctx : ''}${gameStr ? '\nGame: The streamer is playing '+gameStr+'.' : ''}${selectedContext}`;
 
   try {
-    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+    const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({
@@ -960,7 +1000,7 @@ function renderTagGrid() {
 
 // ── LLM PHRASE SUGGESTIONS ──
 async function loadSuggestedPhrases() {
-  if (quietMode) { suggestedPhraseIds = []; renderPhrasesGrid(); return; }
+  if (quietMode || !getProxyUrl()) { suggestedPhraseIds = []; renderPhrasesGrid(); return; }
   const token = ++phrasesSuggestToken;
   const phrases = loadPhrases();
   if (!phrases.length) {
@@ -981,7 +1021,7 @@ ${phraseList}
 Pick the 4 most contextually relevant phrase IDs. Return ONLY valid JSON: {"ids":["id1","id2","id3","id4"]}`;
 
   try {
-    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+    const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({
@@ -1186,6 +1226,7 @@ function importPhrases(event) {
 // ── GENERATE FROM KEYWORDS ──
 async function genFromKeywords() {
   if (quietMode) return;
+  if (!getProxyUrl()) { updateSuggestEnabled(); return; }
   const request = ++suggestionRequest;
   const keywords = document.getElementById('fs-custom-input').value.trim();
   if (!keywords) return;
@@ -1223,7 +1264,7 @@ Recent chat (for context):
 ${chat}${handle ? '\nStreamer handle: @'+handle : ''}${ctx ? '\nContext: '+ctx : ''}${gameStr ? '\nGame: '+gameStr : ''}`;
 
   try {
-    const r = await fetch(`${PROXY_URL}/v1/messages`, {
+    const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
       body: JSON.stringify({

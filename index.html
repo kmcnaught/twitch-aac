@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>StreamAAC</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=user-proxy-1">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=bot-announcements-1" defer></script>
+<script src="chat-core.js?v=user-proxy-1" defer></script>
 <script src="profiles.js" defer></script>
 <script src="command-ignores.js" defer></script>
 <script src="build-info.js" defer></script>
@@ -79,6 +79,12 @@
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
+      <div class="row">
+        <label for="service-proxy-input">AI / YouTube proxy URL</label>
+        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div><button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
+      </div>
+      <p id="service-proxy-help">Optional. Use a proxy you own or trust. Recent chat and phrase details are sent there for AI suggestions. AI and YouTube chat are disabled until configured. Saved on this browser, separately from profiles.</p>
+      <p id="service-proxy-status" role="status" aria-live="polite"></p>
       <div class="row">
         <label for="yt-channel-input">▶ YouTube live</label>
         <div class="input-wrap">
@@ -288,6 +294,23 @@ function toggleTheme() {
 window.addEventListener('DOMContentLoaded', () => {
   document.documentElement.setAttribute('data-theme', theme);
   document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+
+  const proxyInput = document.getElementById('service-proxy-input');
+  const proxyStatus = document.getElementById('service-proxy-status');
+  proxyInput.value = localStorage.getItem('service_proxy_url') || '';
+  document.getElementById('save-proxy-btn').addEventListener('click', () => {
+    try {
+      const url = normalizeProxyUrl(proxyInput.value);
+      if (url) localStorage.setItem('service_proxy_url', url);
+      else localStorage.removeItem('service_proxy_url');
+      proxyInput.setCustomValidity('');
+      proxyStatus.textContent = url ? 'Proxy saved.' : 'AI and YouTube chat are disabled.';
+    } catch {
+      localStorage.removeItem('service_proxy_url');
+      proxyInput.setCustomValidity('Enter an HTTPS base URL without credentials, a query, or a fragment.');
+      proxyStatus.textContent = 'Invalid proxy URL. AI and YouTube chat are disabled.';
+    }
+  });
 
   const savedChannel = localStorage.getItem('twitch_channel');
   const savedHandle  = localStorage.getItem('twitch_handle');
