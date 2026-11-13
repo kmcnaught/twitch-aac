@@ -8,7 +8,7 @@ test('proxy settings save token globally, preserve valid settings on invalid edi
  const ctx=vm.createContext({URL,document,PasswordCredential,navigator:{credentials:{store(credential){offered.push(credential);return Promise.reject(new Error('Browser declined'));}}},localStorage:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)},window:{isSecureContext:true,PasswordCredential,addEventListener(name,fn){if(name==='DOMContentLoaded')this.callbacks.push(fn)},callbacks:[]}});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../chat-core.js'),'utf8'),ctx);
  const html=fs.readFileSync(path.join(__dirname,'../settings.html'),'utf8');
- for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))vm.runInContext(m[1],ctx);
+ for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))if (!m[1].includes('let elVoices')) vm.runInContext(m[1],ctx);
  for(const fn of ctx.window.callbacks)fn();
  const url=elements.get('service-proxy-input'),token=elements.get('service-proxy-token');
  url.value='https://fixture.invalid';token.value='fixture-only-not-a-real-token';save();

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const core = fs.readFileSync(path.join(root, 'chat-core.js'), 'utf8');
-const settings = [...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)]
+const settings = [...fs.readFileSync(path.join(root, 'settings.html'), 'utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .find(match => match[1].includes('// ── STATE'))[1];
 
 test('setup and chat load the same versioned voice script instead of the cached legacy URL', () => {

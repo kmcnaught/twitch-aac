@@ -18,7 +18,7 @@
 
   <header>
     <div class="brand"><div class="logo">StreamAAC</div><div class="tagline">Chat. Stream. Be You.</div></div>
-    <button class="hbtn" id="voice-btn" onclick="openVoiceModal()">voice</button>
+    <a class="hbtn" id="voice-btn" href="settings.html#voice-settings">voice</a>
     <button class="hbtn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">☀</button>
   </header>
 
@@ -26,7 +26,6 @@
     <nav class="profiles-nav" aria-label="Main navigation">
       <a class="nav-item" aria-label="Home" href="index.html">⌂ <span>Home</span></a>
       <a id="profiles-nav-link" class="nav-item selected" aria-label="Profiles" href="#profiles-heading" aria-current="page">♙ <span>Profiles</span></a>
-      <button class="nav-item" aria-label="Voice settings" onclick="openVoiceModal()">⚙ <span>Voice settings</span></button>
       <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
       <a class="nav-item" aria-label="Game phrases" href="game-phrases.html">♧ <span>Game phrases</span></a>
       <a id="ignored-commands-nav-link" class="nav-item" href="#ignored-commands" aria-label="Commands to ignore in Notifications">⊘ <span>Commands to ignore in Notifications</span></a>
@@ -141,131 +140,6 @@
       </section>
     </main>
   </div>
-  <!-- ═══════════════ VOICE MODAL ═══════════════ -->
-  <div class="modal-overlay" id="voice-modal" onclick="handleModalClick(event)">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <span class="modal-title">voice settings</span>
-        <button class="modal-close" onclick="closeVoiceModal()">✕</button>
-      </div>
-
-      <div class="voice-row">
-        <label for="lang-select">language</label>
-        <select id="lang-select" onchange="saveLangChoice()">
-          <option value="en">English</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="es">Spanish</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-          <option value="nl">Dutch</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="zh">Chinese</option>
-        </select>
-      </div>
-
-      <div class="voice-row">
-        <label>voice source</label>
-        <div class="source-pills">
-          <button class="spill active" data-src="browser" onclick="setVoiceSource(this)">browser</button>
-          <button class="spill" data-src="elevenlabs" onclick="setVoiceSource(this)">ElevenLabs</button>
-        </div>
-      </div>
-
-      <hr class="modal-divider">
-
-      <div id="browser-section">
-        <div class="modal-subsection-label">browser voice</div>
-        <div class="voice-row">
-          <label for="browser-voice-select">voice</label>
-          <select id="browser-voice-select" onchange="saveBrowserVoice()">
-            <option value="">— system default —</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="el-section" style="display:none">
-        <div class="modal-subsection-label">ElevenLabs</div>
-        <div class="voice-row">
-          <label for="el-key-input">API key</label>
-          <div class="input-wrap">
-            <input type="password" id="el-key-input" placeholder="sk-… (optional)" autocomplete="off"/>
-            <button class="input-clear" aria-label="Clear">✕</button>
-          </div>
-          <button class="btn-load" id="load-voices-btn" onclick="loadVoices()">load voices</button>
-        </div>
-        <div class="voice-row" id="gender-row" style="display:none">
-          <label>filter</label>
-          <div class="gender-pills">
-            <button class="gpill active" data-g="all" onclick="filterVoices(this)">all</button>
-            <button class="gpill" data-g="female" onclick="filterVoices(this)">female</button>
-            <button class="gpill" data-g="male" onclick="filterVoices(this)">male</button>
-          </div>
-        </div>
-        <div class="voice-row" id="voice-select-row" style="display:none">
-          <label for="voice-select">voice</label>
-          <select id="voice-select" onchange="saveVoiceChoice()">
-            <option value="">— select a voice —</option>
-          </select>
-        </div>
-        <div class="voice-row">
-          <label for="el-model-select">model</label>
-          <select id="el-model-select" onchange="saveElModel()" aria-describedby="el-model-help">
-            <option value="eleven_turbo_v2_5">Turbo v2.5</option>
-            <option value="eleven_multilingual_v2">Multilingual v2</option>
-            <option value="eleven_flash_v2_5">Flash v2.5</option>
-          </select>
-          <p class="voice-help" id="el-model-help">Try Multilingual v2 to compare with TD Snap. It may take longer to speak and use more credits.</p>
-        </div>
-        <div class="voice-row">
-          <label for="el-speed-mode-select">speed method</label>
-          <select id="el-speed-mode-select" onchange="saveElSpeedMode()" aria-describedby="el-speed-mode-help">
-            <option value="generation">ElevenLabs</option>
-            <option value="playback">Playback</option>
-          </select>
-          <p class="voice-help" id="el-speed-mode-help">ElevenLabs speed changes how the voice is generated. Playback changes the speed of normal-speed audio while preserving pitch.</p>
-        </div>
-        <div class="voice-row" id="speed-row">
-          <label>speed</label>
-          <div class="speed-stepper">
-            <button class="spill" onclick="stepElSpeed(-1)" aria-label="decrease speed">−</button>
-            <span id="el-speed-label" aria-live="polite">1.0×</span>
-            <button class="spill" onclick="stepElSpeed(1)" aria-label="increase speed">+</button>
-          </div>
-        </div>
-        <div class="el-tuning-setting" role="group" aria-labelledby="el-stability-title" aria-describedby="el-stability-help">
-          <span id="el-stability-title">stability</span>
-          <div class="el-setting-stepper">
-            <button class="spill" id="el-stability-decrease" onclick="stepElVoiceSetting('stability', -1)" aria-label="Decrease stability">−</button>
-            <span id="el-stability-label" aria-live="polite">50%</span>
-            <button class="spill" id="el-stability-increase" onclick="stepElVoiceSetting('stability', 1)" aria-label="Increase stability">+</button>
-          </div>
-          <p id="el-stability-help">Lower: more expressive. Higher: more consistent.</p>
-        </div>
-        <div class="el-tuning-setting" role="group" aria-labelledby="el-similarity_boost-title" aria-describedby="el-similarity_boost-help">
-          <span id="el-similarity_boost-title">similarity</span>
-          <div class="el-setting-stepper">
-            <button class="spill" id="el-similarity_boost-decrease" onclick="stepElVoiceSetting('similarity_boost', -1)" aria-label="Decrease similarity">−</button>
-            <span id="el-similarity_boost-label" aria-live="polite">75%</span>
-            <button class="spill" id="el-similarity_boost-increase" onclick="stepElVoiceSetting('similarity_boost', 1)" aria-label="Increase similarity">+</button>
-          </div>
-          <p id="el-similarity_boost-help">Higher: closer to the original voice.</p>
-        </div>
-        <div class="el-tuning-setting" role="group" aria-labelledby="el-style-title" aria-describedby="el-style-help">
-          <span id="el-style-title">style exaggeration</span>
-          <div class="el-setting-stepper">
-            <button class="spill" id="el-style-decrease" onclick="stepElVoiceSetting('style', -1)" aria-label="Decrease style exaggeration">−</button>
-            <span id="el-style-label" aria-live="polite">0%</span>
-            <button class="spill" id="el-style-increase" onclick="stepElVoiceSetting('style', 1)" aria-label="Increase style exaggeration">+</button>
-          </div>
-          <p id="el-style-help">Higher: amplifies the voice’s style. May take longer to speak.</p>
-        </div>
-        <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
-      </div>
-
-    </div>
-  </div>
 
 </div>
 
@@ -273,9 +147,6 @@
 // ── STATE ──
 let theme = localStorage.getItem('theme') || 'dark';
 
-// ── ELEVENLABS STATE ──
-let elVoices = [];
-let elGenderFilter = 'all';
 
 // ── THEME ──
 function toggleTheme() {
@@ -355,54 +226,6 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('game_custom', document.getElementById('game-custom-input').value.trim());
   });
 
-  // Load saved ElevenLabs key
-  const savedElKey = localStorage.getItem('el_key');
-  if (savedElKey) document.getElementById('el-key-input').value = savedElKey;
-  document.getElementById('el-key-input').addEventListener('input', () => {
-    localStorage.setItem('el_key', document.getElementById('el-key-input').value.trim());
-  });
-  document.getElementById('el-key-input').addEventListener('blur', () => {
-    if (document.getElementById('el-key-input').value.trim()) loadVoices();
-  });
-
-  // ElevenLabs speed
-  document.getElementById('el-speed-label').textContent = getElSpeed().toFixed(2) + '×';
-  Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
-  restoreElModel();
-  restoreElSpeedMode();
-
-  // Restore saved EL voice data if key is present
-  const savedElVoices = localStorage.getItem('el_voices');
-  if (savedElKey && savedElVoices) {
-    try {
-      elVoices = JSON.parse(savedElVoices);
-      const savedGender = localStorage.getItem('el_gender') || 'all';
-      elGenderFilter = savedGender;
-      document.querySelectorAll('.gpill').forEach(p =>
-        p.classList.toggle('active', p.dataset.g === savedGender));
-      renderElVoices(localStorage.getItem('el_voice_id') || '');
-      setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
-    } catch(e) { /* ignore stale data */ }
-  }
-
-  // Language selector
-  const savedLang = localStorage.getItem('voice_lang') || 'en';
-  document.getElementById('lang-select').value = savedLang;
-
-  // Voice source
-  const savedSrc = localStorage.getItem('voice_source') || 'browser';
-  document.querySelectorAll('.spill').forEach(p =>
-    p.classList.toggle('active', p.dataset.src === savedSrc));
-  document.getElementById('browser-section').style.display = savedSrc === 'browser' ? 'block' : 'none';
-  document.getElementById('el-section').style.display = savedSrc === 'elevenlabs' ? 'block' : 'none';
-
-  // Browser TTS voices
-  populateBrowserVoices();
-  window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
-
-  // Escape closes voice modal
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVoiceModal(); });
-
   // Clear buttons
   ['channel-input','handle-input','persona-input','ctx-input','bots-input','yt-channel-input'].forEach(id => {
     const inp = document.getElementById(id);
@@ -412,171 +235,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const gameCustom = document.getElementById('game-custom-input');
   initClearBtn(gameCustom, gameCustom.parentElement.querySelector('.input-clear'));
 
-  const elKey = document.getElementById('el-key-input');
-  initClearBtn(elKey, elKey.parentElement.querySelector('.input-clear'));
 });
-
-// ── VOICE MODAL ──
-function openVoiceModal() {
-  document.getElementById('voice-modal').classList.add('open');
-}
-function closeVoiceModal() {
-  document.getElementById('voice-modal').classList.remove('open');
-}
-function handleModalClick(e) {
-  if (e.target === document.getElementById('voice-modal')) closeVoiceModal();
-}
-function setVoiceSource(btn) {
-  document.querySelectorAll('.spill').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  const src = btn.dataset.src;
-  localStorage.setItem('voice_source', src);
-  document.getElementById('browser-section').style.display = src === 'browser' ? 'block' : 'none';
-  document.getElementById('el-section').style.display = src === 'elevenlabs' ? 'block' : 'none';
-}
-
-// ── VOICE SETTINGS ──
-function setVoiceStatus(msg, cls='') {
-  const el = document.getElementById('voice-status');
-  el.textContent = msg;
-  el.className = 'voice-status' + (cls ? ' '+cls : '');
-}
-
-async function loadVoices() {
-  const key = document.getElementById('el-key-input').value.trim();
-  if (!key) { setVoiceStatus('enter your ElevenLabs API key first', 'err'); return; }
-  const btn = document.getElementById('load-voices-btn');
-  btn.disabled = true; btn.textContent = 'loading…';
-  setVoiceStatus('fetching voices…');
-  try {
-    const r = await fetch('https://api.elevenlabs.io/v1/voices', {
-      headers: { 'xi-api-key': key }
-    });
-    if (!r.ok) {
-      if (r.status === 401) throw new Error('invalid API key — check it in your ElevenLabs account');
-      throw new Error(`${r.status} ${r.statusText}`);
-    }
-    const data = await r.json();
-    elVoices = data.voices || [];
-    localStorage.setItem('el_key', key);
-    localStorage.setItem('el_voices', JSON.stringify(elVoices));
-    renderElVoices('');
-    setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
-  } catch(e) {
-    setVoiceStatus('failed: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false; btn.textContent = 'load voices';
-  }
-}
-
-function filterVoices(btn) {
-  document.querySelectorAll('.gpill').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  elGenderFilter = btn.dataset.g;
-  localStorage.setItem('el_gender', elGenderFilter);
-  renderElVoices(document.getElementById('voice-select').value);
-  saveVoiceChoice();
-}
-
-function renderElVoices(selectedId) {
-  const genderRow  = document.getElementById('gender-row');
-  const selectRow  = document.getElementById('voice-select-row');
-  const sel        = document.getElementById('voice-select');
-  if (!elVoices.length) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
-
-  genderRow.style.display = 'flex';
-  selectRow.style.display = 'flex';
-
-  const filtered = elGenderFilter === 'all'
-    ? elVoices
-    : elVoices.filter(v => (v.labels?.gender || '').toLowerCase() === elGenderFilter);
-
-  sel.innerHTML = '<option value="">— browser TTS —</option>';
-  filtered.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.voice_id;
-    const gender = v.labels?.gender ? ` · ${v.labels.gender}` : '';
-    const accent = v.labels?.accent ? ` · ${v.labels.accent}` : '';
-    opt.textContent = `${v.name}${gender}${accent}`;
-    if (v.voice_id === selectedId) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-function saveVoiceChoice() {
-  localStorage.setItem('el_voice_id', document.getElementById('voice-select').value);
-}
-
-function restoreElModel() {
-  document.getElementById('el-model-select').value = getElModel();
-}
-
-function saveElModel() {
-  localStorage.setItem('el_model', document.getElementById('el-model-select').value);
-  restoreElModel();
-}
-
-function restoreElSpeedMode() {
-  document.getElementById('el-speed-mode-select').value = getElSpeedMode();
-}
-
-function saveElSpeedMode() {
-  localStorage.setItem('el_speed_mode', document.getElementById('el-speed-mode-select').value);
-  restoreElSpeedMode();
-}
-
-function saveLangChoice() {
-  localStorage.setItem('voice_lang', document.getElementById('lang-select').value);
-  populateBrowserVoices();
-}
-
-// ── BROWSER TTS VOICES ──
-let browserVoices = [];
-function populateBrowserVoices() {
-  const lang = localStorage.getItem('voice_lang') || 'en';
-  browserVoices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith(lang));
-  const sel = document.getElementById('browser-voice-select');
-  if (!sel) return;
-  const saved = localStorage.getItem('browser_voice');
-  sel.innerHTML = '<option value="">— system default —</option>';
-  browserVoices.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.name;
-    opt.textContent = `${v.name} (${v.lang})`;
-    if (v.name === saved) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-function saveBrowserVoice() {
-  localStorage.setItem('browser_voice', document.getElementById('browser-voice-select').value);
-}
-
-// ── ELEVENLABS SPEED ──
-function renderElVoiceSetting(setting) {
-  const value = getElVoiceSetting(setting);
-  document.getElementById('el-' + setting + '-label').textContent = Math.round(value * 100) + '%';
-  document.getElementById('el-' + setting + '-decrease').disabled = value <= 0;
-  document.getElementById('el-' + setting + '-increase').disabled = value >= 1;
-}
-
-function stepElVoiceSetting(setting, dir) {
-  const percent = Math.round(getElVoiceSetting(setting) * 100);
-  const step = setting === 'style' ? 1 : 5;
-  const next = Math.max(0, Math.min(100, percent + dir * step));
-  localStorage.setItem('el_' + setting, String(next / 100));
-  renderElVoiceSetting(setting);
-}
-
-const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
-function stepElSpeed(dir) {
-  const current = getElSpeed();
-  const idx = EL_SPEED_STEPS.findIndex(s => Math.abs(s - current) < 0.001);
-  const next = EL_SPEED_STEPS[Math.max(0, Math.min(EL_SPEED_STEPS.length - 1, (idx === -1 ? 6 : idx) + dir))];
-  const val = next.toFixed(2);
-  localStorage.setItem('el_speed', val);
-  document.getElementById('el-speed-label').textContent = val + '×';
-}
 
 // ── TWITCH AUTH ──
 const TWITCH_CLIENT_ID = '2fum3pmd4efx9zf5cnd1kdm905cwkm';
@@ -667,6 +326,6 @@ function goToChat() {
     el.textContent = 'build ' + info.time + ' · ' + info.sha;
   });
 </script>
-<script>window.addEventListener('DOMContentLoaded', () => { if (location.hash === '#voice-settings') openVoiceModal(); });</script>
+<script>window.addEventListener('DOMContentLoaded', () => { if (location.hash === '#voice-settings') location.replace('settings.html#voice-settings'); });</script>
 </body>
 </html>

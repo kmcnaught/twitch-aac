@@ -509,20 +509,20 @@
   .spill.active { background: var(--accent); border-color: var(--accent); color: white; }
   .spill:active { transform: scale(0.94); }
 
-  #voice-modal select {
+  #voice-settings select {
     background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; cursor: pointer; min-width: 0;
     transition: border-color 0.2s; appearance: none;
   }
-  #voice-modal select:focus { border-color: var(--accent); }
-  #voice-modal select option { background: var(--surface); }
-  #voice-modal input[type="password"] {
+  #voice-settings select:focus { border-color: var(--accent); }
+  #voice-settings select option { background: var(--surface); }
+  #voice-settings input[type="password"] {
     background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; min-width: 0; transition: border-color 0.2s;
   }
-  #voice-modal input[type="password"]:focus { border-color: var(--accent); }
+  #voice-settings input[type="password"]:focus { border-color: var(--accent); }
 
   .btn-load {
     background: var(--surface); border: 1px solid var(--border-ui); color: var(--muted);
