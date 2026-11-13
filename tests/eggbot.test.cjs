@@ -41,26 +41,13 @@ test('only the real bot login is accepted; other wording becomes a bot message',
   assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser subscribed with Prime', 'fixture', 'id').tierLabel, 'Prime');
   assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser resubscribed with Tier 1 (12 months) CrreamAwk', 'fixture', 'id').supporterMessage, '');
 });
-test('Dad Joke posts and commands are excluded in plain and ACTION messages', () => {
-  for (const text of ['Dad Joke: Something funny', '😂 Dad Joke: A test joke', ' dad joke : Another joke ', '!socials', '!Disabled', '!donate', '  !game ', '']) {
-    for (const message of [text, '\x01ACTION ' + text + '\x01']) assert.equal(parseBotAnnouncement('eggbotreal', message, 'fixture', 'id'), null);
+test('no commands or reply text are hard-coded as exclusions', () => {
+  for (const text of ['!fixture', 'Test reply: example']) {
+    assert.equal(parseBotAnnouncement('eggbotreal', text, 'fixture', 'id').kind, 'bot');
   }
-  const e = parseBotAnnouncement('eggbotreal', 'FixtureViewer redeemed a reward!', 'fixture', 'id');
-  assert.equal(e.kind, 'bot');assert.equal(e.username,'eggbotreal');assert.equal(e.botText,'FixtureViewer redeemed a reward!');
+  assert.equal(parseBotAnnouncement('eggbotreal', '', 'fixture', 'empty'), null);
 });
 
-test('configured disability command response is excluded without storing personal reply text', () => {
-  const prefix = ['I have', 'quadriplegic', 'cerebral palsy'].join(' ');
-  assert.equal(parseBotAnnouncement('eggbotreal', prefix + ', test explanation.', 'fixture', 'id'), null);
-  assert.equal(parseBotAnnouncement('eggbotreal', '\x01ACTION ' + prefix + ', test explanation.\x01', 'fixture', 'id'), null);
-  for (const apostrophe of ["'", '’']) {
-    const continuation = 'I can' + apostrophe + 't talk with my mouth, test continuation.';
-    for (const text of [continuation, '\x01ACTION ' + continuation + '\x01']) {
-      assert.equal(parseBotAnnouncement('eggbotreal', text, 'fixture', 'continuation'), null);
-    }
-  }
-  assert.equal(parseBotAnnouncement('eggbotreal', 'A stream goal was reached!', 'fixture', 'next').kind, 'bot');
-});
 test('bot message IDs persist for duplicate suppression without merging distinct gifts', () => {
   const saved = new Map(); const disk = { getItem:k=>saved.get(k), setItem:(k,v)=>saved.set(k,v) };
   const store = new Store(disk, 'fixture');
@@ -90,7 +77,7 @@ test('chat ingestion handles batched IRC lines before normal bot exclusion', () 
   assert.equal(received[0][4], '2026-10-18T12:00:00.000Z');
   assert.equal(received.map(args=>parseBotAnnouncement(...args)).filter(Boolean).length,5);
   socket.onmessage({data:'@id=reply;reply-parent-msg-body=!Disabled\\splease :eggbotreal!eggbotreal@eggbotreal.tmi.twitch.tv PRIVMSG #fixture :Command reply text'});
-  assert.equal(received.at(-1)[5],true);
+  assert.equal(received.at(-1)[5], '!Disabled please');
 });
 test('generic bot messages provide their original text to AI without treating the bot as a supporter', async () => {
   const saved = new Map([['streamaac_notifications_v1:fixture',JSON.stringify({events:[],mode:'ai',mappings:{}})]]);
@@ -101,6 +88,7 @@ test('generic bot messages provide their original text to AI without treating th
     loadPhrases:()=>[],clearTimeout(){},setTimeout(){},AbortController,PROXY_URL:'https://fixture.invalid',
     fetch:async(_,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({content:[{text:'{"responses":["That is exciting!"]}'}]})};}
   });
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../command-ignores.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../notifications.js'),'utf8'),context);
   await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal','A stream goal was reached!','fixture','generic-ai');
@@ -109,23 +97,32 @@ test('generic bot messages provide their original text to AI without treating th
   assert.equal(JSON.parse(saved.get('streamaac_notifications_v1:fixture')).events[0].response,'That is exciting!');
 });
 test('bot notifications work without a Twitch token or AI request and respect the channel setting', async () => {
-  const path = require('node:path'); const saved = new Map(); const elements = new Map(); let requests = 0;
+  const path = require('node:path'); const saved = new Map([['streamaac_ignored_commands_v1', JSON.stringify([{command:'!fixture',replies:['Test reply:']}])]]); const elements = new Map(); let requests = 0;
   const context = vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
     addEventListener(){},localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
     loadPhrases:()=>[],clearTimeout(){},setTimeout(){},fetch(){requests++;throw Error('Must not request services');}
   });
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../command-ignores.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../notifications.js'),'utf8'),context);
   await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal',examples[0][0],'fixture','one');
   context.StreamNotifications.receiveChat('eggbotreal',examples[0][0],'otherchannel','two');
   context.StreamNotifications.receiveChat('eggbotreal','A stream goal was reached!','fixture','generic');
-  context.StreamNotifications.receiveChat('eggbotreal','Dad Joke: Skip this','fixture','joke');
-  context.StreamNotifications.receiveChat('eggbotreal','!socials','fixture','command');
+  context.StreamNotifications.receiveChat('eggbotreal','Test reply: Skip this','fixture','joke');
+  context.StreamNotifications.receiveChat('eggbotreal','!fixture','fixture','command');
   context.StreamNotifications.receiveChat('eggbotreal','Here are the social links.','fixture','command-reply',undefined,true);
   const record = JSON.parse(saved.get('streamaac_notifications_v1:fixture'));
   assert.equal(record.events.length,2);assert.equal(requests,0);assert.match(record.events[0].response,/FixtureUser/);
   assert.equal(record.events[1].botText,'A stream goal was reached!');assert.equal(record.events[1].response,'Thanks for letting me know!');
+  saved.set('streamaac_ignored_commands_v1', JSON.stringify([{command:'!fixture', replies:['Custom reply']} ]));
+  context.StreamNotifications.receiveChat('eggbotreal','Custom reply continues','fixture','custom');
+  context.StreamNotifications.receiveChat('eggbotreal','Variable reply','fixture','threaded',undefined,'!fixture argument');
+  assert.equal(JSON.parse(saved.get('streamaac_notifications_v1:fixture')).events.length,2);
+  saved.set('streamaac_ignored_commands_v1', '[]');
+  context.StreamNotifications.receiveChat('eggbotreal','Custom reply continues','fixture','allowed');
+  assert.equal(JSON.parse(saved.get('streamaac_notifications_v1:fixture')).events.length,3);
+  saved.set('streamaac_notifications_v1:fixture', JSON.stringify(record));
   record.botAnnouncements=false;saved.set('streamaac_notifications_v1:fixture',JSON.stringify(record));
   await context.StreamNotifications.connect('otherchannel');await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal',examples[0][0],'fixture','three');

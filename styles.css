@@ -1,4 +1,11 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
+  .ignored-command-settings { margin-top: 24px; }
+  .ignored-command-settings p { margin: 12px 0; line-height: 1.6; overflow-wrap: anywhere; }
+  #ignored-command-form { display: grid; gap: 12px; margin: 20px 0; }
+  #ignored-command-form input, #ignored-command-form textarea { width: 100%; min-height: 60px; padding: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border-ui); border-radius: 10px; font: inherit; }
+  .ignored-command-settings button { min-height: 64px; padding: 14px 22px; font: inherit; white-space: normal; }
+  .ignored-command-item { display: flex; align-items: start; flex-wrap: wrap; gap: 16px; padding: 18px 0; border-top: 1px solid var(--border-ui); }
+  .ignored-command-item > div { flex: 1; min-width: 180px; overflow-wrap: anywhere; }
 
   :root {
     --bg: #0a0a0f;

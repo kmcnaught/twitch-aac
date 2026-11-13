@@ -8,6 +8,7 @@
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=bot-announcements-1" defer></script>
 <script src="profiles.js" defer></script>
+<script src="command-ignores.js" defer></script>
 <script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page">
@@ -116,6 +117,23 @@
     <button class="btn-connect" id="start-btn" onclick="goToChat()">▶ Start StreamAAC</button>
   </div>
 
+      </section>
+      <section class="profile-settings ignored-command-settings" aria-labelledby="ignored-command-heading">
+        <h2 id="ignored-command-heading">Commands to ignore in Notifications</h2>
+        <p>Ignore eggbotreal command replies. These settings apply to all channels in this browser. Chat stays visible.</p>
+        <p>Add the beginning of each reply, one per line. For replies split into several messages, add each part. Matching ignores capital letters, emoji prefixes and straight or curly apostrophes.</p>
+        <form id="ignored-command-form">
+          <label for="ignored-command-name">Command or label</label>
+          <input id="ignored-command-name" maxlength="80" required placeholder="e.g. !donate" autocapitalize="none">
+          <label for="ignored-command-replies">Reply beginnings (optional, one per line)</label>
+          <textarea id="ignored-command-replies" rows="4" placeholder="Paste the beginning of the bot’s reply"></textarea>
+          <button class="primary" id="ignored-command-add" type="submit">Add / update command</button>
+        </form>
+        <div class="profile-toolbar"><button class="hbtn" id="ignored-command-import">Import commands</button><button class="hbtn" id="ignored-command-export">Export commands</button></div>
+        <input type="file" id="ignored-command-file" accept=".json,application/json" hidden>
+        <p>Import adds to your list. Export includes only this list, including reply text you enter. Changes affect new notifications; saved notifications stay available.</p>
+        <p id="ignored-command-status" role="status"></p>
+        <div id="ignored-command-list"></div>
       </section>
     </main>
   </div>
