@@ -2,7 +2,7 @@
   'use strict';
   const KEY = 'streamaac_ignored_commands_v1';
   const defaults = () => [];
-  const normalize = text => String(text).normalize('NFKC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').replace(/\s+:/g, ':').trim().toLowerCase();
+  const normalize = text => String(text).normalize('NFKC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').replace(/\s+:/g, ':').trim().toLowerCase().replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u, '');
   function validate(entries) {
     if (!Array.isArray(entries) || entries.length > 200) throw new Error('Choose a command list with up to 200 entries.');
     return entries.map(entry => {
@@ -26,11 +26,11 @@
   }
   function commandMatches(text, command) {
     const value = normalize(text), name = normalize(command);
-    return value === name || value.startsWith(name + ' ');
+    return Boolean(name) && (value === name || value.startsWith(name + ' '));
   }
   function matches(text, entries = load()) {
-    const value = normalize(text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1')).replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u, '');
-    return entries.some(e => commandMatches(value, e.command) || e.replies.some(reply => value.startsWith(normalize(reply))));
+    const value = normalize(text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1'));
+    return entries.some(e => commandMatches(value, e.command) || e.replies.some(reply => { const prefix = normalize(reply); return Boolean(prefix) && value.startsWith(prefix); }));
   }
   const api = { KEY, defaults, validate, load, save, merge, matches, commandMatches };
   root.CommandIgnores = api;

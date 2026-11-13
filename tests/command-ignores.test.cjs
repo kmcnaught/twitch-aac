@@ -30,3 +30,18 @@ test('configured reply matching handles emoji, split replies and apostrophes', (
   assert.equal(rules.matches('Second part: more text', entries), true);
   assert.equal(rules.matches('Second part: more text', []), false);
 });
+
+test('emoji in saved labels and reply beginnings matches changing scheduled posts', () => {
+  assert.equal(rules.matches('FixtureUser followed!', [{command:'😂', replies:['😂']}]), false);
+  for (const entry of [
+    {command:'😂 Dad Joke:', replies:['😂 Dad Joke:']},
+    {command:'Scheduled jokes', replies:['😂 Dad Joke:']},
+    {command:'😂 Dad Joke:', replies:[]}
+  ]) {
+    for (const text of ['😂 Dad Joke: First test joke', 'Dad Joke: A different test joke', '\x01ACTION 😂 Dad Joke: Another joke\x01']) {
+      assert.equal(rules.matches(text, [entry]), true);
+      assert.equal(rules.matches(text, []), false);
+    }
+    assert.equal(rules.matches('FixtureUser followed!', [entry]), false);
+  }
+});
