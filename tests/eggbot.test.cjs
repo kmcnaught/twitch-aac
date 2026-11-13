@@ -85,7 +85,7 @@ test('generic bot messages provide their original text to AI without treating th
   const context=vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
     addEventListener(){},localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
-    loadPhrases:()=>[],clearTimeout(){},setTimeout(){},AbortController,getProxyUrl:()=>'https://fixture.invalid',
+    loadPhrases:()=>[],clearTimeout(){},setTimeout(){},AbortController,getProxyUrl:()=>'https://fixture.invalid',getProxyHeaders:()=>({'Content-Type':'application/json'}),
     fetch:async(_,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({content:[{text:'{"responses":["That is exciting!"]}'}]})};}
   });
   vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../command-ignores.js'),'utf8'),context);

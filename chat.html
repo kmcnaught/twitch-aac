@@ -6,10 +6,10 @@
 <title>StreamAAC · Chat</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=user-proxy-1" defer></script>
+<script src="chat-core.js?v=proxy-auth-1" defer></script>
 <script src="sample-phrases.js"></script>
 <script src="command-ignores.js" defer></script>
-<script src="notifications.js?v=user-proxy-1" defer></script>
+<script src="notifications.js?v=proxy-auth-1" defer></script>
 </head>
 <body>
 
@@ -318,7 +318,7 @@ function updateSuggestEnabled() {
   notice.hidden = quietMode || !!getProxyUrl();
 }
 window.addEventListener('storage', event => {
-  if (event.key === 'service_proxy_url' || event.key === null) {
+  if (event.key === 'service_proxy_url' || event.key === 'service_proxy_token' || event.key === null) {
     ++suggestionRequest;
     ++phrasesSuggestToken;
     suggestedPhraseIds = [];
@@ -476,7 +476,7 @@ async function connectYouTube() {
   try {
     const res = await fetch(
       `${proxyUrl}/yt-chat/live?videoId=${encodeURIComponent(videoId)}`,
-      { headers: { 'x-app': 'twitch-aac' } }
+      { headers: getProxyHeaders(false) }
     );
     const data = await res.json();
     if (generation !== youtubeGeneration || proxyUrl !== getProxyUrl()) return;
@@ -509,7 +509,7 @@ async function pollYouTubeChat(skipFirstBatch) {
   try {
     const res = await fetch(`${proxyUrl}/yt-chat/poll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
+      headers: getProxyHeaders(),
       body: JSON.stringify({ liveChatId: ytLiveChatId, pageToken: ytNextPageToken }),
     });
     const data = await res.json();
@@ -680,7 +680,7 @@ ${chat}${handle ? '\nThe streamer\'s own Twitch handle is @'+handle+'. If chat m
   try {
     const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
+      headers: getProxyHeaders(),
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
@@ -1023,7 +1023,7 @@ Pick the 4 most contextually relevant phrase IDs. Return ONLY valid JSON: {"ids"
   try {
     const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
+      headers: getProxyHeaders(),
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 256,
@@ -1266,7 +1266,7 @@ ${chat}${handle ? '\nStreamer handle: @'+handle : ''}${ctx ? '\nContext: '+ctx :
   try {
     const r = await fetch(`${getProxyUrl()}/v1/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-app': 'twitch-aac' },
+      headers: getProxyHeaders(),
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,

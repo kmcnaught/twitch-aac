@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StreamAAC · Settings</title>
-<link rel="stylesheet" href="styles.css?v=user-proxy-1">
+<link rel="stylesheet" href="styles.css?v=proxy-auth-1">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=user-proxy-1" defer></script>
+<script src="chat-core.js?v=proxy-auth-1" defer></script>
 <script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page">
@@ -30,9 +30,15 @@
         <h2 id="proxy-heading">AI and YouTube connection</h2>
       <div class="row">
         <label for="service-proxy-input">AI / YouTube proxy URL</label>
-        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div><button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
+        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div>
       </div>
+      <div class="row">
+        <label for="service-proxy-token">Proxy access token</label>
+        <div class="input-wrap"><input type="password" id="service-proxy-token" autocomplete="off" spellcheck="false" aria-describedby="proxy-token-help"></div>
+      </div>
+      <p id="proxy-token-help">Enter the PROXY_ACCESS_TOKEN from your own proxy, not your Claude API key. Saved in this browser for all profiles. Not included in profile exports.</p>
       <p id="service-proxy-help">Optional. Use a proxy you own or trust. Recent chat and phrase details are sent there for AI suggestions. AI and YouTube chat are disabled until configured. The same proxy is used for every profile in this browser.</p>
+      <button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
       <p id="service-proxy-status" role="status" aria-live="polite"></p>
 
         <p>To disable this connection, clear the URL and press Save proxy. Profile switching and profile imports do not change this setting.</p>
@@ -55,21 +61,37 @@ window.addEventListener('DOMContentLoaded', () => {
   };
   const proxyInput = document.getElementById('service-proxy-input');
   const proxyStatus = document.getElementById('service-proxy-status');
+  const tokenInput = document.getElementById('service-proxy-token');
+  tokenInput.value = localStorage.getItem('service_proxy_token') || '';
   proxyInput.value = localStorage.getItem('service_proxy_url') || '';
   document.getElementById('save-proxy-btn').addEventListener('click', () => {
+    let url;
+    try { url = normalizeProxyUrl(proxyInput.value); }
+    catch {
+      proxyInput.setCustomValidity('Enter an HTTPS base URL without credentials, a query, or a fragment.');
+      proxyStatus.textContent = 'Invalid proxy URL. Previous settings have been kept.';
+      return;
+    }
+    proxyInput.setCustomValidity('');
+    const token = tokenInput.value.trim();
+    if (token && !/^[\x21-\x7e]{1,1000}$/.test(token)) {
+      proxyStatus.textContent = 'Use a proxy token without spaces or non-ASCII characters. Previous settings have been kept.';
+      return;
+    }
     try {
-      const url = normalizeProxyUrl(proxyInput.value);
+      // Disable requests before replacing credentials so tabs cannot send an old token to a new URL.
+      localStorage.removeItem('service_proxy_url');
+      if (url && token) localStorage.setItem('service_proxy_token', token);
+      else localStorage.removeItem('service_proxy_token');
       if (url) localStorage.setItem('service_proxy_url', url);
-      else localStorage.removeItem('service_proxy_url');
-      proxyInput.setCustomValidity('');
+      else tokenInput.value = '';
       proxyStatus.textContent = url ? 'Proxy saved.' : 'AI and YouTube chat are disabled.';
     } catch {
-      localStorage.removeItem('service_proxy_url');
-      proxyInput.setCustomValidity('Enter an HTTPS base URL without credentials, a query, or a fragment.');
-      proxyStatus.textContent = 'Invalid proxy URL. AI and YouTube chat are disabled.';
+      proxyStatus.textContent = 'Could not save proxy settings. Check browser storage and try again.';
     }
   });
-
+
+
 });
 </script>
 </body>
