@@ -6,7 +6,7 @@
 <title>StreamAAC · Chat</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-<script src="chat-core.js?v=proxy-auth-1" defer></script>
+<script src="chat-core.js?v=voice-source-1" defer></script>
 <script src="sample-phrases.js"></script>
 <script src="command-ignores.js" defer></script>
 <script src="notifications.js?v=proxy-auth-1" defer></script>
@@ -105,6 +105,7 @@
           <div id="phrases-list"></div>
         </div>
       </div>
+      <p id="speech-status" role="status" aria-live="polite"></p>
       <div id="fs-custom-bar">
         <button id="fs-magic-btn" title="Generate suggestions from keywords" onclick="genFromKeywords()" disabled>🪄</button>
         <input type="text" id="fs-custom-input" placeholder="type keywords or exact phrase…" autocomplete="off">
@@ -741,14 +742,9 @@ function speak(text, card) {
 
   postToChat(text);
 
-  const voiceId = localStorage.getItem('el_voice_id') || '';
-  const elKey   = localStorage.getItem('el_key') || '';
-
-  if (elKey && voiceId) {
-    speakElevenLabs(text, elKey, voiceId, card);
-  } else {
-    speakBrowser(text, card);
-  }
+  const status = document.getElementById('speech-status');
+  status.textContent = '';
+  speakConfigured(text, card, message => { status.textContent = message; });
 }
 
 // ── SPEAK CUSTOM TEXT ──

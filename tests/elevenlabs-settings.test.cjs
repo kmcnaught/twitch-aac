@@ -262,3 +262,36 @@ test('style can match 7% exactly and is sent as 0.07', async () => {
     stability: 1, similarity_boost: 1, style: 0.07, speed: 0.7
   });
 });
+test('configured speech honours browser choice even with saved ElevenLabs credentials', () => {
+  const app = setup({voice_source:'browser',el_key:'test-key',el_voice_id:'test-voice'});
+  let browserCalls = 0;
+  app.context.speakBrowser = () => browserCalls++;
+  app.context.speakConfigured('Test phrase',null);
+  assert.equal(browserCalls,1);
+  assert.equal(app.request(),undefined);
+});
+test('configured ElevenLabs reports missing credentials without silently changing voice', () => {
+  const app = setup({voice_source:'elevenlabs'});
+  let message;
+  app.context.speakConfigured('Test phrase',null,error=>message=error);
+  assert.match(message,/API key/);
+  assert.equal(app.request(),undefined);
+});
+test('ElevenLabs authentication failure gives actionable feedback', async () => {
+  const app = setup({voice_source:'elevenlabs',el_key:'test-key',el_voice_id:'test-voice'});
+  app.context.fetch = async () => ({ok:false,status:401});
+  let message;
+  await app.context.speakConfigured('Test phrase',null,error=>message=error);
+  assert.match(message,/rejected the API key/);
+});
+test('browser speech failures are reported and release the speaking state', () => {
+  const app = setup({voice_source:'browser'});
+  let utterance;
+  app.context.SpeechSynthesisUtterance = function(text) { this.text=text; utterance=this; };
+  app.context.window.speechSynthesis.getVoices = () => [];
+  app.context.window.speechSynthesis.speak = () => {};
+  let message;
+  app.context.speakConfigured('Test phrase',null,error=>message=error);
+  utterance.onerror({error:'audio-busy'});
+  assert.match(message,/audio-busy/);
+});

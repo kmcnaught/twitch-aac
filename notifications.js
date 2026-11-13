@@ -311,10 +311,8 @@
       };
       speakingCard = card; card.classList.add('speaking');
       updateCard(event);
-      const voice = localStorage.getItem('el_voice_id'); const key = localStorage.getItem('el_key');
       try {
-        if (voice && key) speakElevenLabs(event.response.trim(), key, voice, card, () => feedback('Speech failed. The notification is still available.'));
-        else speakBrowser(event.response.trim(), card);
+        speakConfigured(event.response.trim(), card, message => feedback(message + ' The notification is still available.'));
       } catch (_) { clearSpeak(card); }
     };
     const dismiss = node('button', 'Dismiss');
