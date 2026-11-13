@@ -17,8 +17,8 @@
   </header>
   <div class="profiles-layout">
     <nav class="profiles-nav" aria-label="Main navigation">
-      <a class="nav-item" aria-label="Profiles" href="index.html">♙ <span>Profiles</span></a>
-      <a class="nav-item" aria-label="Voice settings" href="index.html#voice-settings">♫ <span>Voice settings</span></a>
+      <a class="nav-item" aria-label="Home" href="index.html">⌂ <span>Home</span></a>
+      <a class="nav-item" aria-label="Profiles" href="index.html#profiles-heading">♙ <span>Profiles</span></a>
       <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
       <a class="nav-item" aria-label="Game phrases" href="game-phrases.html">♧ <span>Game phrases</span></a>
       <a class="nav-item" aria-label="Commands to ignore in Notifications" href="index.html#ignored-commands">⊘ <span>Commands to ignore in Notifications</span></a>
@@ -26,7 +26,137 @@
     </nav>
     <main class="profiles-main">
       <div class="profiles-heading"><div><h1>Settings</h1><p>Shared across every profile in this browser.</p></div></div>
-      <section class="profile-settings" aria-labelledby="proxy-heading">
+      <nav class="settings-subnav" aria-label="Settings sections">
+        <a class="hbtn" href="#voice-settings" aria-current="location">Voice settings</a>
+        <a class="hbtn" href="#connection-settings">AI and YouTube connection</a>
+      </nav>
+      <section class="profile-settings" id="voice-settings" aria-labelledby="voice-heading">
+        <h2 id="voice-heading">Voice settings</h2>
+        <p>Voice changes are saved automatically in this browser. Export a backup to restore them on another browser or site address.</p>
+        <div class="profile-toolbar">
+          <button class="hbtn" type="button" onclick="exportVoiceSettings()">Export voice settings</button>
+          <button class="hbtn" type="button" onclick="document.getElementById('voice-settings-file').click()">Import voice settings</button>
+        </div>
+        <label class="voice-backup-key"><input type="checkbox" id="voice-export-key"> Include ElevenLabs API key in backup (keep this file private)</label>
+        <input type="file" id="voice-settings-file" accept=".json,application/json" hidden onchange="importVoiceSettings(this)">
+        <p id="voice-backup-status" role="status" aria-live="polite"></p>
+      <div class="voice-row">
+        <label for="lang-select">language</label>
+        <select id="lang-select" onchange="saveLangChoice()">
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="nl">Dutch</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </div>
+
+      <div class="voice-row">
+        <label>voice source</label>
+        <div class="source-pills">
+          <button class="spill active" data-src="browser" onclick="setVoiceSource(this)">browser</button>
+          <button class="spill" data-src="elevenlabs" onclick="setVoiceSource(this)">ElevenLabs</button>
+        </div>
+      </div>
+
+      <hr class="modal-divider">
+
+      <div id="browser-section">
+        <div class="modal-subsection-label">browser voice</div>
+        <div class="voice-row">
+          <label for="browser-voice-select">voice</label>
+          <select id="browser-voice-select" onchange="saveBrowserVoice()">
+            <option value="">— system default —</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="el-section" style="display:none">
+        <div class="modal-subsection-label">ElevenLabs</div>
+        <div class="voice-row">
+          <label for="el-key-input">API key</label>
+          <div class="input-wrap">
+            <input type="password" id="el-key-input" placeholder="sk-… (optional)" autocomplete="off"/>
+            <button class="input-clear" aria-label="Clear">✕</button>
+          </div>
+          <button class="btn-load" id="load-voices-btn" onclick="loadVoices()">load voices</button>
+        </div>
+        <div class="voice-row" id="gender-row" style="display:none">
+          <label>filter</label>
+          <div class="gender-pills">
+            <button class="gpill active" data-g="all" onclick="filterVoices(this)">all</button>
+            <button class="gpill" data-g="female" onclick="filterVoices(this)">female</button>
+            <button class="gpill" data-g="male" onclick="filterVoices(this)">male</button>
+          </div>
+        </div>
+        <div class="voice-row" id="voice-select-row" style="display:none">
+          <label for="voice-select">voice</label>
+          <select id="voice-select" onchange="saveVoiceChoice()">
+            <option value="">— select a voice —</option>
+          </select>
+        </div>
+        <div class="voice-row">
+          <label for="el-model-select">model</label>
+          <select id="el-model-select" onchange="saveElModel()" aria-describedby="el-model-help">
+            <option value="eleven_turbo_v2_5">Turbo v2.5</option>
+            <option value="eleven_multilingual_v2">Multilingual v2</option>
+            <option value="eleven_flash_v2_5">Flash v2.5</option>
+          </select>
+          <p class="voice-help" id="el-model-help">Try Multilingual v2 to compare with TD Snap. It may take longer to speak and use more credits.</p>
+        </div>
+        <div class="voice-row">
+          <label for="el-speed-mode-select">speed method</label>
+          <select id="el-speed-mode-select" onchange="saveElSpeedMode()" aria-describedby="el-speed-mode-help">
+            <option value="generation">ElevenLabs</option>
+            <option value="playback">Playback</option>
+          </select>
+          <p class="voice-help" id="el-speed-mode-help">ElevenLabs speed changes how the voice is generated. Playback changes the speed of normal-speed audio while preserving pitch.</p>
+        </div>
+        <div class="voice-row" id="speed-row">
+          <label>speed</label>
+          <div class="speed-stepper">
+            <button class="spill" onclick="stepElSpeed(-1)" aria-label="decrease speed">−</button>
+            <span id="el-speed-label" aria-live="polite">1.0×</span>
+            <button class="spill" onclick="stepElSpeed(1)" aria-label="increase speed">+</button>
+          </div>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-stability-title" aria-describedby="el-stability-help">
+          <span id="el-stability-title">stability</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-stability-decrease" onclick="stepElVoiceSetting('stability', -1)" aria-label="Decrease stability">−</button>
+            <span id="el-stability-label" aria-live="polite">50%</span>
+            <button class="spill" id="el-stability-increase" onclick="stepElVoiceSetting('stability', 1)" aria-label="Increase stability">+</button>
+          </div>
+          <p id="el-stability-help">Lower: more expressive. Higher: more consistent.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-similarity_boost-title" aria-describedby="el-similarity_boost-help">
+          <span id="el-similarity_boost-title">similarity</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-similarity_boost-decrease" onclick="stepElVoiceSetting('similarity_boost', -1)" aria-label="Decrease similarity">−</button>
+            <span id="el-similarity_boost-label" aria-live="polite">75%</span>
+            <button class="spill" id="el-similarity_boost-increase" onclick="stepElVoiceSetting('similarity_boost', 1)" aria-label="Increase similarity">+</button>
+          </div>
+          <p id="el-similarity_boost-help">Higher: closer to the original voice.</p>
+        </div>
+        <div class="el-tuning-setting" role="group" aria-labelledby="el-style-title" aria-describedby="el-style-help">
+          <span id="el-style-title">style exaggeration</span>
+          <div class="el-setting-stepper">
+            <button class="spill" id="el-style-decrease" onclick="stepElVoiceSetting('style', -1)" aria-label="Decrease style exaggeration">−</button>
+            <span id="el-style-label" aria-live="polite">0%</span>
+            <button class="spill" id="el-style-increase" onclick="stepElVoiceSetting('style', 1)" aria-label="Increase style exaggeration">+</button>
+          </div>
+          <p id="el-style-help">Higher: amplifies the voice’s style. May take longer to speak.</p>
+        </div>
+        <div class="voice-status" id="voice-status">enter your API key and click load voices</div>
+      </div>
+
+      </section>
+      <section class="profile-settings" id="connection-settings" aria-labelledby="proxy-heading">
         <h2 id="proxy-heading">AI and YouTube connection</h2>
       <form id="proxy-settings-form" method="post" autocomplete="on" novalidate>
       <div class="row">
@@ -104,6 +234,312 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 });
+</script>
+<script>
+// ── STATE ──
+let elVoices = [];
+let elGenderFilter = 'all';
+function restoreVoiceSettings() {
+  // Load saved ElevenLabs key
+  const savedElKey = localStorage.getItem('el_key');
+  document.getElementById('el-key-input').value = savedElKey || '';
+
+
+  // ElevenLabs speed
+  document.getElementById('el-speed-label').textContent = getElSpeed().toFixed(2) + '×';
+  Object.keys(EL_VOICE_DEFAULTS).forEach(renderElVoiceSetting);
+  restoreElModel();
+  restoreElSpeedMode();
+
+  // Restore saved EL voice data if key is present
+  const savedElVoices = localStorage.getItem('el_voices');
+  elVoices = [];
+  if (savedElVoices) {
+    try {
+      const cachedVoices = JSON.parse(savedElVoices);
+      elVoices = Array.isArray(cachedVoices) ? cachedVoices.filter(v => v && typeof v.voice_id === 'string' && typeof v.name === 'string') : [];
+      const savedGender = localStorage.getItem('el_gender') || 'all';
+      elGenderFilter = savedGender;
+      document.querySelectorAll('.gpill').forEach(p =>
+        p.classList.toggle('active', p.dataset.g === savedGender));
+      renderElVoices(localStorage.getItem('el_voice_id') || '');
+      setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
+    } catch(e) { /* ignore stale data */ }
+  }
+
+  // Language selector
+  const savedLang = localStorage.getItem('voice_lang') || 'en';
+  document.getElementById('lang-select').value = savedLang;
+
+  // Voice source
+  const savedSrc = localStorage.getItem('voice_source') || 'browser';
+  document.querySelectorAll('.source-pills .spill').forEach(p =>
+    p.classList.toggle('active', p.dataset.src === savedSrc));
+  document.getElementById('browser-section').style.display = savedSrc === 'browser' ? 'block' : 'none';
+  document.getElementById('el-section').style.display = savedSrc === 'elevenlabs' ? 'block' : 'none';
+
+  // Browser TTS voices
+  populateBrowserVoices();
+  window.speechSynthesis.onvoiceschanged = populateBrowserVoices;
+
+  renderElVoices(localStorage.getItem('el_voice_id') || '');
+}
+window.addEventListener('DOMContentLoaded', () => {
+  initSettingsNavigation();
+  restoreVoiceSettings();
+  const elKey = document.getElementById('el-key-input');
+  elKey.addEventListener('input', () => localStorage.setItem('el_key', elKey.value.trim()));
+  elKey.addEventListener('blur', () => { if (elKey.value.trim()) loadVoices(); });
+  initClearBtn(elKey, elKey.parentElement.querySelector('.input-clear'));
+});
+
+function initSettingsNavigation() {
+  const links = document.querySelectorAll('.settings-subnav a');
+  const panels = ['voice-settings', 'connection-settings'];
+  function showSection() {
+    const active = panels.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'voice-settings';
+    panels.forEach(id => { document.getElementById(id).hidden = id !== active; });
+    links.forEach(link => {
+      if (link.getAttribute('href') === '#' + active) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  window.addEventListener('hashchange', showSection);
+  showSection();
+}
+
+const VOICE_BACKUP_FIELDS = {
+  voice_lang: 'en', voice_source: 'browser', browser_voice: '', el_voice_id: '',
+  el_gender: 'all', el_model: 'eleven_turbo_v2_5', el_speed_mode: 'generation',
+  el_speed: '1.00', el_stability: '0.5', el_similarity_boost: '0.75', el_style: '0'
+};
+function validateVoiceBackup(data) {
+  if (!data || data.type !== 'streamaac-voice-settings' || data.version !== 1 ||
+      !data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))
+    throw new Error('Choose a StreamAAC voice settings backup.');
+  const settings = {};
+  for (const [key, fallback] of Object.entries(VOICE_BACKUP_FIELDS)) {
+    const value = data.settings[key] ?? fallback;
+    if (typeof value !== 'string' || value.length > 1000) throw new Error('Invalid voice setting: ' + key);
+    settings[key] = value;
+  }
+  const choices = {
+    voice_lang: ['en','fr','de','es','it','pt','nl','ja','ko','zh'],
+    voice_source: ['browser','elevenlabs'], el_gender: ['all','female','male'],
+    el_model: ['eleven_turbo_v2_5','eleven_multilingual_v2','eleven_flash_v2_5'],
+    el_speed_mode: ['generation','playback']
+  };
+  for (const [key, values] of Object.entries(choices))
+    if (!values.includes(settings[key])) throw new Error('Invalid voice setting: ' + key);
+  for (const key of ['el_speed','el_stability','el_similarity_boost','el_style']) {
+    const n = Number(settings[key]);
+    const min = key === 'el_speed' ? 0.7 : 0;
+    const max = key === 'el_speed' ? 1.2 : 1;
+    if (!settings[key].trim() || !Number.isFinite(n) || n < min || n > max)
+      throw new Error('Invalid voice setting: ' + key);
+  }
+  if (Object.hasOwn(data.settings, 'el_key')) {
+    if (typeof data.settings.el_key !== 'string' || data.settings.el_key.length > 1000 ||
+        /[^\x21-\x7e]/.test(data.settings.el_key)) throw new Error('Invalid ElevenLabs API key.');
+    settings.el_key = data.settings.el_key;
+  }
+  return settings;
+}
+function exportVoiceSettings() {
+  const status = document.getElementById('voice-backup-status');
+  try {
+    const settings = Object.fromEntries(Object.entries(VOICE_BACKUP_FIELDS).map(([key, fallback]) =>
+      [key, localStorage.getItem(key) ?? fallback]));
+    if (document.getElementById('voice-export-key').checked) settings.el_key = localStorage.getItem('el_key') || '';
+    const backup = { type: 'streamaac-voice-settings', version: 1, settings };
+    validateVoiceBackup(backup);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'streamaac-voice-settings.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = Object.hasOwn(settings, 'el_key') ? 'Voice settings exported, including your API key. Keep the file private.' : 'Voice settings exported. API key not included.';
+  } catch { status.textContent = 'Could not export voice settings. Check browser storage and try again.'; }
+}
+async function importVoiceSettings(input) {
+  const status = document.getElementById('voice-backup-status');
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    if (file.size > 100000) throw new Error('Voice settings backup is too large.');
+    const settings = validateVoiceBackup(JSON.parse(await file.text()));
+    const previous = Object.fromEntries(Object.keys(settings).map(key => [key, localStorage.getItem(key)]));
+    try { for (const [key, value] of Object.entries(settings)) localStorage.setItem(key, value); }
+    catch (error) {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+      }
+      throw error;
+    }
+    restoreVoiceSettings();
+    status.textContent = 'Voice settings imported.' + (!Object.hasOwn(settings, 'el_key') && !localStorage.getItem('el_key') && settings.voice_source === 'elevenlabs' ? ' Enter your ElevenLabs API key below.' : '');
+  } catch (error) { status.textContent = error instanceof SyntaxError ? 'That file is not valid JSON. Settings were not changed.' : error.message || 'Could not import voice settings.'; }
+  finally { input.value = ''; }
+}
+
+function setVoiceSource(btn) {
+  document.querySelectorAll('.source-pills .spill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const src = btn.dataset.src;
+  localStorage.setItem('voice_source', src);
+  document.getElementById('browser-section').style.display = src === 'browser' ? 'block' : 'none';
+  document.getElementById('el-section').style.display = src === 'elevenlabs' ? 'block' : 'none';
+}
+
+// ── VOICE SETTINGS ──
+function setVoiceStatus(msg, cls='') {
+  const el = document.getElementById('voice-status');
+  el.textContent = msg;
+  el.className = 'voice-status' + (cls ? ' '+cls : '');
+}
+
+async function loadVoices() {
+  const key = document.getElementById('el-key-input').value.trim();
+  if (!key) { setVoiceStatus('enter your ElevenLabs API key first', 'err'); return; }
+  const btn = document.getElementById('load-voices-btn');
+  btn.disabled = true; btn.textContent = 'loading…';
+  setVoiceStatus('fetching voices…');
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: { 'xi-api-key': key }
+    });
+    if (!r.ok) {
+      if (r.status === 401) throw new Error('invalid API key — check it in your ElevenLabs account');
+      throw new Error(`${r.status} ${r.statusText}`);
+    }
+    const data = await r.json();
+    elVoices = data.voices || [];
+    localStorage.setItem('el_key', key);
+    localStorage.setItem('el_voices', JSON.stringify(elVoices));
+    renderElVoices(localStorage.getItem('el_voice_id') || '');
+    setVoiceStatus(`${elVoices.length} voices loaded`, 'ok');
+  } catch(e) {
+    setVoiceStatus('failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'load voices';
+  }
+}
+
+function filterVoices(btn) {
+  document.querySelectorAll('.gpill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  elGenderFilter = btn.dataset.g;
+  localStorage.setItem('el_gender', elGenderFilter);
+  renderElVoices(document.getElementById('voice-select').value);
+  saveVoiceChoice();
+}
+
+function renderElVoices(selectedId) {
+  const genderRow  = document.getElementById('gender-row');
+  const selectRow  = document.getElementById('voice-select-row');
+  const sel        = document.getElementById('voice-select');
+  if (!elVoices.length && !selectedId) { genderRow.style.display='none'; selectRow.style.display='none'; return; }
+
+  genderRow.style.display = 'flex';
+  selectRow.style.display = 'flex';
+
+  const filtered = elGenderFilter === 'all'
+    ? elVoices
+    : elVoices.filter(v => (v.labels?.gender || '').toLowerCase() === elGenderFilter);
+
+  sel.innerHTML = '<option value="">— browser TTS —</option>';
+  if (selectedId && !filtered.some(v => v.voice_id === selectedId)) {
+    const saved = document.createElement('option');
+    saved.value = selectedId;
+    saved.textContent = 'Saved voice (' + selectedId + ')';
+    saved.selected = true;
+    sel.appendChild(saved);
+  }
+  filtered.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voice_id;
+    const gender = v.labels?.gender ? ` · ${v.labels.gender}` : '';
+    const accent = v.labels?.accent ? ` · ${v.labels.accent}` : '';
+    opt.textContent = `${v.name}${gender}${accent}`;
+    if (v.voice_id === selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function saveVoiceChoice() {
+  localStorage.setItem('el_voice_id', document.getElementById('voice-select').value);
+}
+
+function restoreElModel() {
+  document.getElementById('el-model-select').value = getElModel();
+}
+
+function saveElModel() {
+  localStorage.setItem('el_model', document.getElementById('el-model-select').value);
+  restoreElModel();
+}
+
+function restoreElSpeedMode() {
+  document.getElementById('el-speed-mode-select').value = getElSpeedMode();
+}
+
+function saveElSpeedMode() {
+  localStorage.setItem('el_speed_mode', document.getElementById('el-speed-mode-select').value);
+  restoreElSpeedMode();
+}
+
+function saveLangChoice() {
+  localStorage.setItem('voice_lang', document.getElementById('lang-select').value);
+  populateBrowserVoices();
+}
+
+// ── BROWSER TTS VOICES ──
+let browserVoices = [];
+function populateBrowserVoices() {
+  const lang = localStorage.getItem('voice_lang') || 'en';
+  browserVoices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith(lang));
+  const sel = document.getElementById('browser-voice-select');
+  if (!sel) return;
+  const saved = localStorage.getItem('browser_voice');
+  sel.innerHTML = '<option value="">— system default —</option>';
+  browserVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (v.name === saved) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function saveBrowserVoice() {
+  localStorage.setItem('browser_voice', document.getElementById('browser-voice-select').value);
+}
+
+// ── ELEVENLABS SPEED ──
+function renderElVoiceSetting(setting) {
+  const value = getElVoiceSetting(setting);
+  document.getElementById('el-' + setting + '-label').textContent = Math.round(value * 100) + '%';
+  document.getElementById('el-' + setting + '-decrease').disabled = value <= 0;
+  document.getElementById('el-' + setting + '-increase').disabled = value >= 1;
+}
+
+function stepElVoiceSetting(setting, dir) {
+  const percent = Math.round(getElVoiceSetting(setting) * 100);
+  const step = setting === 'style' ? 1 : 5;
+  const next = Math.max(0, Math.min(100, percent + dir * step));
+  localStorage.setItem('el_' + setting, String(next / 100));
+  renderElVoiceSetting(setting);
+}
+
+const EL_SPEED_STEPS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
+function stepElSpeed(dir) {
+  const current = getElSpeed();
+  const idx = EL_SPEED_STEPS.findIndex(s => Math.abs(s - current) < 0.001);
+  const next = EL_SPEED_STEPS[Math.max(0, Math.min(EL_SPEED_STEPS.length - 1, (idx === -1 ? 6 : idx) + dir))];
+  const val = next.toFixed(2);
+  localStorage.setItem('el_speed', val);
+  document.getElementById('el-speed-label').textContent = val + '×';
+}
+
 </script>
 </body>
 </html>

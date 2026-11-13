@@ -509,20 +509,20 @@
   .spill.active { background: var(--accent); border-color: var(--accent); color: white; }
   .spill:active { transform: scale(0.94); }
 
-  #voice-modal select {
+  #voice-settings select {
     background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; cursor: pointer; min-width: 0;
     transition: border-color 0.2s; appearance: none;
   }
-  #voice-modal select:focus { border-color: var(--accent); }
-  #voice-modal select option { background: var(--surface); }
-  #voice-modal input[type="password"] {
+  #voice-settings select:focus { border-color: var(--accent); }
+  #voice-settings select option { background: var(--surface); }
+  #voice-settings input[type="password"] {
     background: var(--bg); border: 1px solid var(--border-ui); border-radius: 11px;
     padding: 10px 13px; color: var(--text); font-family: 'DM Mono', monospace;
     font-size: 15px; flex: 1; outline: none; min-width: 0; transition: border-color 0.2s;
   }
-  #voice-modal input[type="password"]:focus { border-color: var(--accent); }
+  #voice-settings input[type="password"]:focus { border-color: var(--accent); }
 
   .btn-load {
     background: var(--surface); border: 1px solid var(--border-ui); color: var(--muted);
@@ -926,3 +926,12 @@
 
 #service-proxy-input, #service-proxy-token { width: 100%; box-sizing: border-box; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; }
 #service-proxy-help, #service-proxy-status { font-size: 14px; line-height: 1.5; }
+
+.voice-backup-key { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 8px 0; cursor: pointer; }
+.voice-backup-key input { width: 22px; height: 22px; flex-shrink: 0; }
+#voice-backup-status { margin: 8px 0 16px; }
+
+.settings-subnav { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.settings-subnav .hbtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.settings-subnav [aria-current] { background: var(--accent); color: #fff; border-color: var(--accent); }
+#voice-settings[hidden], #connection-settings[hidden] { display: none; }
