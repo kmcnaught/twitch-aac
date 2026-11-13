@@ -13,6 +13,14 @@ function getProxyUrl() {
   catch { return ''; }
 }
 
+function getProxyHeaders(json = true) {
+  const headers = { 'x-app': 'twitch-aac' };
+  if (json) headers['Content-Type'] = 'application/json';
+  const token = (localStorage.getItem('service_proxy_token') || '').trim();
+  if (token) headers.Authorization = 'Bearer ' + token;
+  return headers;
+}
+
 // ── SHARED CONSTANTS ──
 const VLENGTH = {
   short:  'All responses must be short spoken phrases — aim for roughly 2–7 words each, punchy and natural. The bonus option can be whatever length fits best.',

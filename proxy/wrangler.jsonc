@@ -1,0 +1,12 @@
+{
+  "name": "streamaac-personal-proxy",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGINS": ""
+  },
+  "observability": {
+    "enabled": false
+  }
+}
