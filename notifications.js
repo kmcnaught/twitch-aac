@@ -1,6 +1,7 @@
 /* Persistent, channel-scoped Twitch events. No event can initiate speech or move focus. */
 (function (root) {
   'use strict';
+  const commandIgnores = root.CommandIgnores || (typeof require === 'function' ? require('./command-ignores.js') : null);
   const CLIENT_ID = '2fum3pmd4efx9zf5cnd1kdm905cwkm';
   const TYPES = {
     follow: ['New follower', 'channel.follow', '2', 'moderator:read:followers'],
@@ -29,7 +30,7 @@
     if (String(user).toLowerCase() !== 'eggbotreal' || typeof text !== 'string') return null;
     // Twitch /me messages carry a CTCP ACTION envelope around the announcement.
     text = text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1').trim();
-    if (!text || /^(?:\p{Extended_Pictographic}\uFE0F?\s*)*dad\s+joke\s*:/iu.test(text) || text.startsWith('!') || /^I have quadriplegic cerebral palsy\b/i.test(text) || /^I can['’]t talk with my mouth\b/i.test(text)) return null;
+    if (!text || commandIgnores?.matches(text)) return null;
     const name = '@?([a-zA-Z0-9_]{1,25})';
     let kind, match, extra = {};
     if ((match = text.match(new RegExp('^' + name + ' followed!\\.?$')))) kind = 'follow';
@@ -225,7 +226,7 @@
     if (botEnabled()) $('notifications-resub-status').textContent = 'Resubscriptions: using eggbotreal chat announcements';
   }
   function receiveChat(user, text, ch, messageId, timestamp, replyToCommand = false) {
-    if (!store || ch !== channel || !botEnabled() || replyToCommand) return;
+    if (!store || ch !== channel || !botEnabled() || replyToCommand === true || (typeof replyToCommand === 'string' && commandIgnores?.load().some(entry => commandIgnores.commandMatches(replyToCommand, entry.command)))) return;
     const event = parseBotAnnouncement(user, text.trim(), ch, messageId, timestamp);
     if (!event) return;
     event.response = choosePhrase(event); event.source = 'phrase';
