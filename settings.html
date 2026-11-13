@@ -28,17 +28,20 @@
       <div class="profiles-heading"><div><h1>Settings</h1><p>Shared across every profile in this browser.</p></div></div>
       <section class="profile-settings" aria-labelledby="proxy-heading">
         <h2 id="proxy-heading">AI and YouTube connection</h2>
+      <form id="proxy-settings-form" method="post" autocomplete="on" novalidate>
       <div class="row">
         <label for="service-proxy-input">AI / YouTube proxy URL</label>
-        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div>
+        <div class="input-wrap"><input type="url" id="service-proxy-input" name="username" autocomplete="username" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div>
       </div>
       <div class="row">
         <label for="service-proxy-token">Proxy access token</label>
-        <div class="input-wrap"><input type="password" id="service-proxy-token" autocomplete="off" spellcheck="false" aria-describedby="proxy-token-help"></div>
+        <div class="input-wrap"><input type="password" id="service-proxy-token" name="password" autocomplete="current-password" spellcheck="false" aria-describedby="proxy-token-help"></div>
       </div>
       <p id="proxy-token-help">Enter the PROXY_ACCESS_TOKEN from your own proxy, not your Claude API key. Saved in this browser for all profiles. Not included in profile exports.</p>
       <p id="service-proxy-help">Optional. Use a proxy you own or trust. Recent chat and phrase details are sent there for AI suggestions. AI and YouTube chat are disabled until configured. The same proxy is used for every profile in this browser.</p>
-      <button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
+      <button class="hbtn" id="save-proxy-btn" type="submit">Save proxy</button>
+      <p>Chrome may offer to save the proxy URL and access token in Google Password Manager when you save. You choose whether to accept.</p>
+      </form>
       <p id="service-proxy-status" role="status" aria-live="polite"></p>
 
         <p>To disable this connection, clear the URL and press Save proxy. Profile switching and profile imports do not change this setting.</p>
@@ -64,7 +67,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const tokenInput = document.getElementById('service-proxy-token');
   tokenInput.value = localStorage.getItem('service_proxy_token') || '';
   proxyInput.value = localStorage.getItem('service_proxy_url') || '';
-  document.getElementById('save-proxy-btn').addEventListener('click', () => {
+  document.getElementById('proxy-settings-form').addEventListener('submit', event => {
+    event.preventDefault();
     let url;
     try { url = normalizeProxyUrl(proxyInput.value); }
     catch {
@@ -86,6 +90,13 @@ window.addEventListener('DOMContentLoaded', () => {
       if (url) localStorage.setItem('service_proxy_url', url);
       else tokenInput.value = '';
       proxyStatus.textContent = url ? 'Proxy saved.' : 'AI and YouTube chat are disabled.';
+      if (url && token && window.isSecureContext && window.PasswordCredential && navigator.credentials?.store) {
+        try {
+          const credential = new PasswordCredential({ id: url, password: token, name: 'StreamAAC proxy' });
+          // The browser controls the prompt and whether the user accepts it.
+          Promise.resolve(navigator.credentials.store(credential)).catch(() => {});
+        } catch { /* Browser password saving is optional; local settings are already saved. */ }
+      }
     } catch {
       proxyStatus.textContent = 'Could not save proxy settings. Check browser storage and try again.';
     }
