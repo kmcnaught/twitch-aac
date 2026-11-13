@@ -25,6 +25,10 @@
     </nav>
     <main class="profiles-main">
       <div class="profiles-heading"><div><h1>Settings</h1><p>Shared across every profile in this browser.</p></div></div>
+      <nav class="settings-subnav" aria-label="Settings sections">
+        <a class="hbtn" href="#voice-settings" aria-current="location">Voice settings</a>
+        <a class="hbtn" href="#connection-settings">AI and YouTube connection</a>
+      </nav>
       <section class="profile-settings" id="voice-settings" aria-labelledby="voice-heading">
         <h2 id="voice-heading">Voice settings</h2>
         <p>Voice changes are saved automatically in this browser. Export a backup to restore them on another browser or site address.</p>
@@ -151,7 +155,7 @@
       </div>
 
       </section>
-      <section class="profile-settings" aria-labelledby="proxy-heading">
+      <section class="profile-settings" id="connection-settings" aria-labelledby="proxy-heading">
         <h2 id="proxy-heading">AI and YouTube connection</h2>
       <form id="proxy-settings-form" method="post" autocomplete="on" novalidate>
       <div class="row">
@@ -280,12 +284,28 @@ function restoreVoiceSettings() {
   renderElVoices(localStorage.getItem('el_voice_id') || '');
 }
 window.addEventListener('DOMContentLoaded', () => {
+  initSettingsNavigation();
   restoreVoiceSettings();
   const elKey = document.getElementById('el-key-input');
   elKey.addEventListener('input', () => localStorage.setItem('el_key', elKey.value.trim()));
   elKey.addEventListener('blur', () => { if (elKey.value.trim()) loadVoices(); });
   initClearBtn(elKey, elKey.parentElement.querySelector('.input-clear'));
 });
+
+function initSettingsNavigation() {
+  const links = document.querySelectorAll('.settings-subnav a');
+  const panels = ['voice-settings', 'connection-settings'];
+  function showSection() {
+    const active = panels.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'voice-settings';
+    panels.forEach(id => { document.getElementById(id).hidden = id !== active; });
+    links.forEach(link => {
+      if (link.getAttribute('href') === '#' + active) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  window.addEventListener('hashchange', showSection);
+  showSection();
+}
 
 const VOICE_BACKUP_FIELDS = {
   voice_lang: 'en', voice_source: 'browser', browser_voice: '', el_voice_id: '',

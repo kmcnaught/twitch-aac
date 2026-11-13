@@ -930,3 +930,8 @@
 .voice-backup-key { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 8px 0; cursor: pointer; }
 .voice-backup-key input { width: 22px; height: 22px; flex-shrink: 0; }
 #voice-backup-status { margin: 8px 0 16px; }
+
+.settings-subnav { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.settings-subnav .hbtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.settings-subnav [aria-current] { background: var(--accent); color: #fff; border-color: var(--accent); }
+#voice-settings[hidden], #connection-settings[hidden] { display: none; }
