@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamAAC · Settings</title>
+<link rel="stylesheet" href="styles.css?v=user-proxy-1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+<script src="chat-core.js?v=user-proxy-1" defer></script>
+<script src="build-info.js" defer></script>
+</head>
+<body class="profiles-page">
+<div id="compact-view">
+  <header>
+    <div class="brand"><div class="logo">StreamAAC</div><div class="tagline">Chat. Stream. Be You.</div></div>
+    <button class="hbtn" id="theme-btn" aria-label="Toggle light/dark mode">☀</button>
+  </header>
+  <div class="profiles-layout">
+    <nav class="profiles-nav" aria-label="Main navigation">
+      <a class="nav-item" aria-label="Profiles" href="index.html">♙ <span>Profiles</span></a>
+      <a class="nav-item" aria-label="Voice settings" href="index.html#voice-settings">♫ <span>Voice settings</span></a>
+      <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
+      <a class="nav-item" aria-label="Game phrases" href="game-phrases.html">♧ <span>Game phrases</span></a>
+      <a class="nav-item" aria-label="Commands to ignore in Notifications" href="index.html#ignored-commands">⊘ <span>Commands to ignore in Notifications</span></a>
+      <a class="nav-item selected" aria-label="Settings" href="settings.html" aria-current="page">⚙ <span>Settings</span></a>
+    </nav>
+    <main class="profiles-main">
+      <div class="profiles-heading"><div><h1>Settings</h1><p>Shared across every profile in this browser.</p></div></div>
+      <section class="profile-settings" aria-labelledby="proxy-heading">
+        <h2 id="proxy-heading">AI and YouTube connection</h2>
+      <div class="row">
+        <label for="service-proxy-input">AI / YouTube proxy URL</label>
+        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div><button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
+      </div>
+      <p id="service-proxy-help">Optional. Use a proxy you own or trust. Recent chat and phrase details are sent there for AI suggestions. AI and YouTube chat are disabled until configured. The same proxy is used for every profile in this browser.</p>
+      <p id="service-proxy-status" role="status" aria-live="polite"></p>
+
+        <p>To disable this connection, clear the URL and press Save proxy. Profile switching and profile imports do not change this setting.</p>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const themeButton = document.getElementById('theme-btn');
+  function refreshTheme() {
+    themeButton.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+  }
+  refreshTheme();
+  themeButton.onclick = () => {
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    refreshTheme();
+  };
+  const proxyInput = document.getElementById('service-proxy-input');
+  const proxyStatus = document.getElementById('service-proxy-status');
+  proxyInput.value = localStorage.getItem('service_proxy_url') || '';
+  document.getElementById('save-proxy-btn').addEventListener('click', () => {
+    try {
+      const url = normalizeProxyUrl(proxyInput.value);
+      if (url) localStorage.setItem('service_proxy_url', url);
+      else localStorage.removeItem('service_proxy_url');
+      proxyInput.setCustomValidity('');
+      proxyStatus.textContent = url ? 'Proxy saved.' : 'AI and YouTube chat are disabled.';
+    } catch {
+      localStorage.removeItem('service_proxy_url');
+      proxyInput.setCustomValidity('Enter an HTTPS base URL without credentials, a query, or a fragment.');
+      proxyStatus.textContent = 'Invalid proxy URL. AI and YouTube chat are disabled.';
+    }
+  });
+
+});
+</script>
+</body>
+</html>

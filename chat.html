@@ -312,7 +312,7 @@ function updateSuggestEnabled() {
   if (!notice) {
     notice = document.createElement('p');
     notice.id = 'proxy-notice';
-    notice.innerHTML = 'AI is disabled. <a href="index.html">Configure your proxy in settings</a> to enable suggestions. Saved phrases and speech are still available.';
+    notice.innerHTML = 'AI is disabled. <a href="settings.html">Configure your proxy in settings</a> to enable suggestions. Saved phrases and speech are still available.';
     document.getElementById('fs-responses').before(notice);
   }
   notice.hidden = quietMode || !!getProxyUrl();

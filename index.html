@@ -30,6 +30,7 @@
       <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
       <a class="nav-item" aria-label="Game phrases" href="game-phrases.html">♧ <span>Game phrases</span></a>
       <a id="ignored-commands-nav-link" class="nav-item" href="#ignored-commands" aria-label="Commands to ignore in Notifications">⊘ <span>Commands to ignore in Notifications</span></a>
+      <a class="nav-item" aria-label="Settings" href="settings.html">⚙ <span>Settings</span></a>
     </nav>
     <main class="profiles-main">
       <div id="profiles-panel">
@@ -79,12 +80,6 @@
           <button class="input-clear" aria-label="Clear">✕</button>
         </div>
       </div>
-      <div class="row">
-        <label for="service-proxy-input">AI / YouTube proxy URL</label>
-        <div class="input-wrap"><input type="url" id="service-proxy-input" placeholder="https://your-proxy.example" aria-describedby="service-proxy-help service-proxy-status" autocapitalize="none" spellcheck="false"></div><button class="hbtn" id="save-proxy-btn" type="button">Save proxy</button>
-      </div>
-      <p id="service-proxy-help">Optional. Use a proxy you own or trust. Recent chat and phrase details are sent there for AI suggestions. AI and YouTube chat are disabled until configured. Saved on this browser, separately from profiles.</p>
-      <p id="service-proxy-status" role="status" aria-live="polite"></p>
       <div class="row">
         <label for="yt-channel-input">▶ YouTube live</label>
         <div class="input-wrap">
@@ -294,23 +289,6 @@ function toggleTheme() {
 window.addEventListener('DOMContentLoaded', () => {
   document.documentElement.setAttribute('data-theme', theme);
   document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
-
-  const proxyInput = document.getElementById('service-proxy-input');
-  const proxyStatus = document.getElementById('service-proxy-status');
-  proxyInput.value = localStorage.getItem('service_proxy_url') || '';
-  document.getElementById('save-proxy-btn').addEventListener('click', () => {
-    try {
-      const url = normalizeProxyUrl(proxyInput.value);
-      if (url) localStorage.setItem('service_proxy_url', url);
-      else localStorage.removeItem('service_proxy_url');
-      proxyInput.setCustomValidity('');
-      proxyStatus.textContent = url ? 'Proxy saved.' : 'AI and YouTube chat are disabled.';
-    } catch {
-      localStorage.removeItem('service_proxy_url');
-      proxyInput.setCustomValidity('Enter an HTTPS base URL without credentials, a query, or a fragment.');
-      proxyStatus.textContent = 'Invalid proxy URL. AI and YouTube chat are disabled.';
-    }
-  });
 
   const savedChannel = localStorage.getItem('twitch_channel');
   const savedHandle  = localStorage.getItem('twitch_handle');
