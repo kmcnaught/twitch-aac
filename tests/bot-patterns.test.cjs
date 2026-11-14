@@ -2,6 +2,21 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const api = require('../bot-patterns.js');
 const { parseBotAnnouncement } = require('../notifications.js');
+test('Tiltify donation patterns import and extract display names and amounts', () => {
+  const values = new Map([['ignored_bots','charitybot']]);
+  const storage = {getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
+  global.localStorage = storage;
+  api.importText('donate | {username} gave {amount} to charity! {supporterMessage}', storage);
+  const event = parseBotAnnouncement('charitybot', 'Alex Smith gave £12.50 to charity! Good luck!', 'test', 'donation');
+  assert.equal(event.kind,'donate'); assert.equal(event.username,'Alex Smith');
+  assert.equal(event.amount,'£12.50'); assert.equal(event.supporterMessage,'Good luck!');
+  const {interpolate,DEFAULTS,TYPES} = require('../notifications.js');
+  assert.equal(interpolate('{username}: {amount} {currency} — {supporterMessage}', {...event,currency:'GBP'}), 'Alex Smith: £12.50 GBP — Good luck!');
+  assert.equal(interpolate(DEFAULTS.donate,event),'Thank you for your donation, Alex Smith!');
+  assert.equal(TYPES.donate,undefined);
+  assert.equal(api.parseText(api.exportText(api.load(storage)))[0].kind,'donate');
+  assert.equal(parseBotAnnouncement('viewer','Alex Smith gave £12.50 to charity! Good luck!','test','spoof'),null);
+});
 test('patterns persist, change immediately, and can be emptied', () => {
   const values = new Map([['ignored_bots', 'testbot']]);
   const storage = {getItem: k => values.get(k) ?? null, setItem: (k,v) => values.set(k,v)};
