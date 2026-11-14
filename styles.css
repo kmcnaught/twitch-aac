@@ -938,3 +938,20 @@
 
 #speech-status { margin: 8px 14px; color: var(--text); }
 #speech-status:empty { display: none; }
+
+/* Phrase management on the Phrases page. */
+.game-phrases-page #phrases-editor { display: flex; overflow: visible; margin-bottom: 32px; }
+.game-phrases-page #phrases-list { overflow: visible; }
+.game-phrases-page #phrases-io-bar { flex-wrap: wrap; }
+.game-phrases-page .phrase-row { flex-wrap: wrap; }
+.game-phrases-page .phrase-row .pr-phrase { min-width: 180px; }
+.game-phrases-page #phrases-add-form input:focus-visible,
+.game-phrases-page .phrase-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.game-phrases-page #phrases-editor-header { flex-direction: column; align-items: flex-start; }
+.game-phrases-page .phrase-row { display: grid; grid-template-columns: 120px 160px minmax(180px, 1fr) 44px 44px; }
+.game-phrases-page .phrase-row input { width: 100%; box-sizing: border-box; }
+.game-phrases-page .phrase-row button { min-height: 44px; min-width: 44px; }
+@media (max-width: 900px) {
+  .game-phrases-page .phrase-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px 44px; }
+  .game-phrases-page .phrase-row .pr-phrase { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+}
