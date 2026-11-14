@@ -52,7 +52,7 @@
       kind = 'raid'; extra = { viewers: Number(match[2]) };
     }
     if (!kind) { kind = 'bot'; extra = { botText: text }; }
-    return { id: (bot === 'eggbotreal' ? 'eggbot:' : 'bot:') + (messageId || crypto.randomUUID()), channel, kind, username: match ? match[1] : bot,
+    return { id: 'bot:' + (messageId || crypto.randomUUID()), channel, kind, username: match ? match[1] : bot,
       time: timestamp || new Date().toISOString(), eventOrigin: bot,
       bits: 0, viewers: 0, subscriptions: 0, months: 0, tier: '', reward: '', points: 0,
       status: 'pending', response: '', source: '', revision: 0, ...extra };
@@ -91,6 +91,10 @@
       if (!this.data || !Array.isArray(this.data.events)) this.data = { events: [], mode: 'phrases', mappings: {} };
       if (!this.data.mappings || typeof this.data.mappings !== 'object') this.data.mappings = {};
       if (this.data.mode !== 'ai') this.data.mode = 'phrases';
+      // Normalize the legacy bot ID prefix so replayed messages remain duplicates.
+      for (const event of this.data.events) {
+        if (typeof event.id === 'string' && event.id.startsWith('eggbot:')) event.id = 'bot:' + event.id.slice(7);
+      }
       this.ids = new Set(this.data.events.map(e => e.id));
     }
     save() {
