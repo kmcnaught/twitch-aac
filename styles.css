@@ -959,3 +959,13 @@
 .phrases-section-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .phrases-section-nav .hbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; box-sizing: border-box; text-decoration: none; font-size: 16px; }
 .phrases-section-nav .hbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+#bot-pattern-form textarea { width: 100%; box-sizing: border-box; font: inherit; line-height: 1.5; min-height: 110px; padding: 14px; background: var(--bg); color: var(--text); border: 2px solid var(--border-ui); border-radius: 10px; resize: vertical; }
+#bot-pattern-form textarea:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; }
+#bot-pattern-list .ignored-command-item { flex-wrap: wrap; }
+#bot-pattern-list p, #bot-pattern-status { overflow-wrap: anywhere; min-width: 0; }
+#bot-pattern-settings > p { margin: 14px 0; line-height: 1.5; }
+#bot-pattern-form .row { margin: 18px 0; }
+#bot-pattern-form label { display: block; margin-bottom: 8px; }
+#bot-pattern-form select { font: inherit; padding: 12px; border-radius: 10px; background: var(--bg); color: var(--text); border: 2px solid var(--border-ui); }
+#bot-pattern-settings .hbtn { min-height: 48px; color: var(--text); }

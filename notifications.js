@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const commandIgnores = root.CommandIgnores || (typeof require === 'function' ? require('./command-ignores.js') : null);
+  const botPatterns = root.BotPatterns || (typeof require === 'function' ? require('./bot-patterns.js') : null);
   const CLIENT_ID = '2fum3pmd4efx9zf5cnd1kdm905cwkm';
   const TYPES = {
     follow: ['New follower', 'channel.follow', '2', 'moderator:read:followers'],
@@ -33,26 +34,9 @@
     // Twitch /me messages carry a CTCP ACTION envelope around the announcement.
     text = text.replace(/^\x01ACTION ([\s\S]*)\x01$/, '$1').trim();
     if (!text || commandIgnores?.matches(text)) return null;
-    const name = '@?([a-zA-Z0-9_]{1,25})';
-    const tier = '(Prime|Tier [123])';
-    const pattern = expression => text.match(new RegExp('^' + name + expression + '$', 'i'));
-    let kind, match, extra = {};
-    if ((match = pattern(' (?:just )?(?:followed|is now following)[!.]*'))) kind = 'follow';
-    else if ((match = pattern(' gifted (?:a |1 )' + tier + ' sub(?:scription)? to ' + name + "[!.]*(?: [A-Za-z0-9_]+)?(?: They[\u2019']ve gifted (\\d+) subs in total[!.]*)?"))) {
-      kind = 'gift'; extra = { tierLabel: match[2], recipient: match[3], subscriptions: 1 };
-      if (match[4]) extra.lifetimeGifts = Number(match[4]);
-    } else if ((match = pattern(' gifted ([1-9]\\d*) (?:' + tier + ' )?subs(?:criptions)? to the community[!.]*'))) {
-      kind = 'gift'; extra = { subscriptions: Number(match[2]), tierLabel: match[3] || '' };
-    } else if ((match = pattern(' (?:just )?resubscribed with ' + tier + ' \\(([1-9]\\d*) months?\\)[!.]*(?: ([\\s\\S]*))?'))) {
-      // Preserve the suffix verbatim: arbitrary emote names cannot reliably be distinguished from a message.
-      kind = 'resubscribe'; extra = { tierLabel: match[2], months: Number(match[3]), supporterMessage: match[4] || '' };
-    } else if ((match = pattern(' (?:just )?subscribed(?: with ' + tier + ')?[!.]*'))) {
-      kind = 'subscribe'; extra = { tierLabel: match[2] || '' };
-    } else if ((match = pattern(' (?:is raiding with a party of|raided with|is raiding with) ([1-9]\\d*)(?: viewers)?[!.]*'))) {
-      kind = 'raid'; extra = { viewers: Number(match[2]) };
-    }
-    if (!kind) { kind = 'bot'; extra = { botText: text }; }
-    return { id: 'bot:' + (messageId || crypto.randomUUID()), channel, kind, username: match ? match[1] : bot,
+    const recognized = botPatterns?.match(text);
+    const { kind = 'bot', username = bot, ...extra } = recognized || { botText: text };
+    return { id: 'bot:' + (messageId || crypto.randomUUID()), channel, kind, username,
       time: timestamp || new Date().toISOString(), eventOrigin: bot,
       bits: 0, viewers: 0, subscriptions: 0, months: 0, tier: '', reward: '', points: 0,
       status: 'pending', response: '', source: '', revision: 0, ...extra };

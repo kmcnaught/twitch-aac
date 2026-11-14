@@ -3,7 +3,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const { parseBotAnnouncement, Store } = require('../notifications.js');
-global.localStorage = { getItem: key => key === 'ignored_bots' ? 'eggbotreal' : null };
+const patterns = [
+ ['follow', '{username} followed!'],
+ ['gift', "{username} gifted a {tier} sub to {recipient} CrreamAwk They've gifted {lifetimeGifts} subs in total!"],
+ ['resubscribe', '{username} resubscribed with {tier} ({months} months) {supporterMessage}'],
+ ['subscribe', '{username} subscribed with {tier}.'],
+ ['subscribe', '{username} subscribed with {tier}'],
+ ['raid', '{username} is raiding with a party of {viewers}!']
+].map(([kind, template]) => ({kind, template}));
+
+global.localStorage = { getItem: key => key === 'ignored_bots' ? 'eggbotreal' : key === 'streamaac_bot_patterns_v1' ? JSON.stringify(patterns) : null };
 const examples = [
   ['FixtureUser followed!', 'follow'],
   ["FixtureUser gifted a Tier 1 sub to FixtureRecipient CrreamAwk They've gifted 47 subs in total!", 'gift'],
@@ -83,13 +92,16 @@ test('chat ingestion handles batched IRC lines before normal bot exclusion', () 
 test('generic bot messages provide their original text to AI without treating the bot as a supporter', async () => {
   const saved = new Map([['ignored_bots', 'eggbotreal'],['streamaac_notifications_v1:fixture',JSON.stringify({events:[],mode:'ai',mappings:{}})]]);
   let request;const elements=new Map();
+  saved.set('streamaac_bot_patterns_v1', JSON.stringify(patterns));
   const context=vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
     addEventListener(){},localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
     loadPhrases:()=>[],clearTimeout(){},setTimeout(){},AbortController,getProxyUrl:()=>'https://fixture.invalid',getProxyHeaders:()=>({'Content-Type':'application/json'}),
     fetch:async(_,options)=>{request=JSON.parse(options.body);return {ok:true,json:async()=>({content:[{text:'{"responses":["That is exciting!"]}'}]})};}
   });
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../bot-patterns.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../command-ignores.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../bot-patterns.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../notifications.js'),'utf8'),context);
   await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal','A stream goal was reached!','fixture','generic-ai');
@@ -99,12 +111,15 @@ test('generic bot messages provide their original text to AI without treating th
 });
 test('bot notifications work without a Twitch token or AI request and respect the channel setting', async () => {
   const path = require('node:path'); const saved = new Map([['ignored_bots', 'eggbotreal'],['streamaac_ignored_commands_v1', JSON.stringify([{command:'!fixture',replies:['Test reply:']}])]]); const elements = new Map(); let requests = 0;
+  saved.set('streamaac_bot_patterns_v1', JSON.stringify(patterns));
   const context = vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
     addEventListener(){},localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
     getProxyUrl:()=>'',loadPhrases:()=>[],clearTimeout(){},setTimeout(){},fetch(){requests++;throw Error('Must not request services');}
   });
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../bot-patterns.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../command-ignores.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../bot-patterns.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../notifications.js'),'utf8'),context);
   await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal',examples[0][0],'fixture','one');
@@ -145,7 +160,7 @@ test('announcement parsing verifies USERNOTICE type and sender login rather than
 test('configured bots replace the hard-coded account', () => {
  const original = global.localStorage;
  try {
- global.localStorage = { getItem: () => ' OtherBot, SecondBot ' };
+ global.localStorage = { getItem: key => key === 'ignored_bots' ? ' OtherBot, SecondBot ' : key === 'streamaac_bot_patterns_v1' ? JSON.stringify(patterns) : null };
  assert.equal(parseBotAnnouncement('OTHERBOT', 'FixtureUser followed!', 'fixture', 'custom').kind, 'follow');
  assert.equal(parseBotAnnouncement('secondbot', 'Hello', 'fixture', 'second').eventOrigin, 'secondbot');
  assert.equal(parseBotAnnouncement('eggbotreal', 'Hello', 'fixture', 'removed'), null);
@@ -154,24 +169,9 @@ test('configured bots replace the hard-coded account', () => {
  } finally { global.localStorage = original; }
 });
 
-test('announcement variants do not depend on a channel emote', () => {
- const cases = [
-  ['@FixtureUser is now following.', 'follow', {}],
-  ['FixtureUser gifted a Tier 2 sub to Recipient', 'gift', {recipient:'Recipient', subscriptions:1}],
-  ["FixtureUser gifted a Tier 1 sub to Recipient OtherEmote They've gifted 99 subs in total!", 'gift', {lifetimeGifts:99, subscriptions:1}],
-  ['FixtureUser gifted 5 Tier 1 subs to the community!', 'gift', {subscriptions:5}],
-  ['FixtureUser resubscribed with Prime (3 months)', 'resubscribe', {months:3, supporterMessage:''}],
-  ['FixtureUser resubscribed with Tier 1 (3 months) Hello there!', 'resubscribe', {supporterMessage:'Hello there!'}],
-  ['FixtureUser just subscribed!', 'subscribe', {}],
-  ['FixtureUser raided with 42 viewers!', 'raid', {viewers:42}]
- ];
- for (const [text,kind,details] of cases) {
-  const event = parseBotAnnouncement('eggbotreal', text, 'fixture', text);
-  assert.equal(event.kind,kind,text);
-  for (const [key,value] of Object.entries(details)) assert.equal(event[key],value,text);
- }
- for (const text of ['FixtureUser gifted a Tier 1 sub to Recipient is only an example', 'FixtureUser gifted zero subs to the community!', 'FixtureUser raided with -2 viewers!', 'FixtureUser subscribed with an unknown tier', 'Someone said FixtureUser just subscribed!']) {
-  assert.equal(parseBotAnnouncement('eggbotreal',text,'fixture',text).kind,'bot',text);
+test('unconfigured wording stays generic instead of using built-in variants', () => {
+ for (const text of ['@FixtureUser is now following.', 'FixtureUser just subscribed!', 'FixtureUser raided with 42 viewers!']) {
+  assert.equal(parseBotAnnouncement('eggbotreal', text, 'fixture', text).kind, 'bot');
  }
 });
 
