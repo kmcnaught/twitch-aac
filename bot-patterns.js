@@ -1,10 +1,10 @@
 (function (root) {
   'use strict';
   const KEY = 'streamaac_bot_patterns_v1';
-  const kinds = ['follow', 'subscribe', 'resubscribe', 'gift', 'raid'];
-  const fields = { username: '[a-zA-Z0-9_]{1,25}', recipient: '[a-zA-Z0-9_]{1,25}', tier: '.+?', subscriptions: '[1-9][0-9]*', months: '[1-9][0-9]*', viewers: '[1-9][0-9]*', lifetimeGifts: '[0-9]+', supporterMessage: '.+?', ignore: '.*?' };
+  const kinds = ['follow', 'subscribe', 'resubscribe', 'gift', 'raid', 'donate'];
+  const fields = { username: '[a-zA-Z0-9_]{1,25}', recipient: '[a-zA-Z0-9_]{1,25}', tier: '.+?', subscriptions: '[1-9][0-9]*', months: '[1-9][0-9]*', viewers: '[1-9][0-9]*', lifetimeGifts: '[0-9]+', supporterMessage: '.+?', amount: '.+?', currency: '.+?', ignore: '.*?' };
   const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  function compile(template) {
+  function compile(template, kind) {
     if (typeof template !== 'string' || !template.trim() || template.length > 500) throw new Error('Enter a pattern of up to 500 characters.');
     if (/[\r\n]/.test(template)) throw new Error('Use one line per pattern.');
     if (/\}\{/.test(template)) throw new Error('Separate placeholders with message text or spaces.');
@@ -20,7 +20,7 @@
       const literal = template.slice(end, next < 0 ? template.length : next);
       const boundary = escape(literal) + (next < 0 ? '$' : '');
       // Capture once up to the next literal, then consume without backtracking.
-      source += '(?=(?<' + field + '>' + fields[field] + ')(?=' + boundary + '))\\k<' + field + '>';
+      source += '(?=(?<' + field + '>' + (field === 'username' && kind === 'donate' ? '.+?' : fields[field]) + ')(?=' + boundary + '))\\k<' + field + '>';
       offset = match.index + match[0].length;
     }
     source += escape(template.slice(offset));
@@ -32,7 +32,7 @@
     return entries.map(entry => {
       if (!entry || !kinds.includes(entry.kind)) throw new Error('Choose an event type.');
       const template = typeof entry.template === 'string' ? entry.template.trim() : entry.template;
-      compile(template);
+      compile(template, entry.kind);
       return { kind: entry.kind, template };
     });
   }
@@ -66,7 +66,7 @@
   function match(text, entries = load()) {
     if (typeof text !== 'string' || text.length > 2000) return null;
     for (const entry of entries) {
-      const result = compile(entry.template).exec(text);
+      const result = compile(entry.template, entry.kind).exec(text);
       if (!result) continue;
       const data = { ...result.groups };
       delete data.ignore;

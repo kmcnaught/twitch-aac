@@ -49,3 +49,8 @@ Serve locally and open `tests/notifications-preview.html` for a simulation with 
 Live broadcaster authorization, Twitch event delivery, ElevenLabs/browser audio on the user's PC, and eye-gaze ergonomics still require real-world testing. No new runtime dependencies or build step are introduced.
 
 Announcement matching is case-insensitive and accepts optional @ prefixes, common follow/subscription/raid wording, and community gift counts. Individual gifts and resubscriptions no longer require a particular channel emote. Resubscription suffix text is preserved verbatim, including any emotes, rather than guessing which words belong to the supporter. Unknown formats remain generic Bot message notifications. This is a set of supported formats, not automatic understanding of every bot template.
+
+
+## Tiltify donations
+
+Choose **Donate (Tiltify)** in Settings > Bot message patterns, or use `donate | ...` in text imports. Add the Twitch bot that posts Tiltify announcements to Ignore bots. Match its exact wording using `{username}`, `{amount}`, optional `{currency}` and `{supporterMessage}`. Donor names may contain spaces; amounts are preserved as text, including symbols/decimals. Saved donation responses can use these placeholders and `event:donate` phrase tags. Donations use bot messages only; no Tiltify account connection or Twitch EventSub subscription is created. No donation wording is preconfigured.
