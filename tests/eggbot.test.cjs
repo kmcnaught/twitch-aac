@@ -174,3 +174,10 @@ test('announcement variants do not depend on a channel emote', () => {
   assert.equal(parseBotAnnouncement('eggbotreal',text,'fixture',text).kind,'bot',text);
  }
 });
+
+test('notification UI text retains UTF-8 punctuation', () => {
+ const source = fs.readFileSync(require('node:path').join(__dirname, '../notifications.js'), 'utf8');
+ assert.ok(source.includes('Choose another phrase' + String.fromCharCode(0x2026)));
+ assert.ok(source.includes('Response ' + String.fromCharCode(0x2014) + ' edit before speaking'));
+ assert.ok(![0x00c2, 0x00e2, 0xfffd].some(code => source.includes(String.fromCharCode(code))));
+});
