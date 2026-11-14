@@ -181,3 +181,13 @@ test('notification UI text retains UTF-8 punctuation', () => {
  assert.ok(source.includes('Response ' + String.fromCharCode(0x2014) + ' edit before speaking'));
  assert.ok(![0x00c2, 0x00e2, 0xfffd].some(code => source.includes(String.fromCharCode(code))));
 });
+
+test('legacy notification IDs still suppress replay after account-specific IDs are removed', () => {
+ const legacy = {id: 'eggbot:legacy-message', kind:'follow', response:'Keep my response', status:'spoken'};
+ const disk = {getItem: () => JSON.stringify({events:[legacy], mode:'phrases', mappings:{}}), setItem(){}};
+ const store = new Store(disk, 'fixture');
+ assert.equal(store.add(parseBotAnnouncement('eggbotreal', 'FixtureUser followed!', 'fixture', 'legacy-message')), false);
+ assert.equal(store.data.events[0].response, 'Keep my response');
+ assert.equal(store.data.events[0].status, 'spoken');
+ assert.ok(!fs.readFileSync(require('node:path').join(__dirname, '../notifications.js'), 'utf8').includes('eggbotreal'));
+});
