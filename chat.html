@@ -97,6 +97,7 @@
             <button onclick="addPhrase()">+ add</button>
           </div>
           <div id="phrases-io-bar">
+            <button id="load-starter-phrases" onclick="loadStarterPhrases()">load starter phrases</button>
             <button onclick="exportPhrases()">↓ export .txt</button>
             <input type="file" id="phrases-import-input" accept=".txt" style="display:none" onchange="importPhrases(event)">
             <button onclick="document.getElementById('phrases-import-input').click()">↑ import .txt</button>
@@ -1185,27 +1186,47 @@ function parsePhrasesTxt(text) {
   return parsed;
 }
 
+function addImportedPhrases(incoming) {
+  const existing = loadPhrases();
+  const existingPhrases = new Set(existing.map(p => p.phrase));
+  let added = 0;
+  incoming.forEach(p => {
+    if (!existingPhrases.has(p.phrase)) {
+      existing.push({ id: generateId(), ...p });
+      existingPhrases.add(p.phrase);
+      added++;
+    }
+  });
+  savePhrases(existing);
+  renderPhraseEditor();
+  refreshTagDatalist();
+  renderPhrasesGrid();
+  alert(`Imported ${added} phrase${added !== 1 ? 's' : ''} (${incoming.length - added} duplicate${incoming.length - added !== 1 ? 's' : ''} skipped).`);
+}
+
+async function loadStarterPhrases() {
+  const button = document.getElementById('load-starter-phrases');
+  button.disabled = true;
+  try {
+    const response = await fetch('starter-phrases.txt');
+    if (!response.ok) throw new Error('Could not load starter phrases');
+    const incoming = parsePhrasesTxt(await response.text());
+    if (!incoming.length) throw new Error('No starter phrases found');
+    addImportedPhrases(incoming);
+  } catch (_) {
+    alert('Could not load starter phrases. Please try again, or use import .txt to choose your starter phrases file.');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function importPhrases(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     const incoming = parsePhrasesTxt(e.target.result);
-    const existing = loadPhrases();
-    const existingPhrases = new Set(existing.map(p => p.phrase));
-    let added = 0;
-    incoming.forEach(p => {
-      if (!existingPhrases.has(p.phrase)) {
-        existing.push({ id: generateId(), ...p });
-        existingPhrases.add(p.phrase);
-        added++;
-      }
-    });
-    savePhrases(existing);
-    renderPhraseEditor();
-    refreshTagDatalist();
-    renderPhrasesGrid();
-    alert(`Imported ${added} phrase${added !== 1 ? 's' : ''} (${incoming.length - added} duplicate${incoming.length - added !== 1 ? 's' : ''} skipped).`);
+    addImportedPhrases(incoming);
   };
   reader.readAsText(file);
   event.target.value = '';
