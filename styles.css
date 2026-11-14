@@ -955,3 +955,7 @@
   .game-phrases-page .phrase-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px 44px; }
   .game-phrases-page .phrase-row .pr-phrase { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
 }
+
+.phrases-section-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.phrases-section-nav .hbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; box-sizing: border-box; text-decoration: none; font-size: 16px; }
+.phrases-section-nav .hbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
