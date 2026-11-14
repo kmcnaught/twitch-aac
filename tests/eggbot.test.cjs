@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const { parseBotAnnouncement, Store } = require('../notifications.js');
+global.localStorage = { getItem: key => key === 'ignored_bots' ? 'eggbotreal' : null };
 const examples = [
   ['FixtureUser followed!', 'follow'],
   ["FixtureUser gifted a Tier 1 sub to FixtureRecipient CrreamAwk They've gifted 47 subs in total!", 'gift'],
@@ -80,7 +81,7 @@ test('chat ingestion handles batched IRC lines before normal bot exclusion', () 
   assert.equal(received.at(-1)[5], '!Disabled please');
 });
 test('generic bot messages provide their original text to AI without treating the bot as a supporter', async () => {
-  const saved = new Map([['streamaac_notifications_v1:fixture',JSON.stringify({events:[],mode:'ai',mappings:{}})]]);
+  const saved = new Map([['ignored_bots', 'eggbotreal'],['streamaac_notifications_v1:fixture',JSON.stringify({events:[],mode:'ai',mappings:{}})]]);
   let request;const elements=new Map();
   const context=vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
@@ -93,11 +94,11 @@ test('generic bot messages provide their original text to AI without treating th
   await context.StreamNotifications.connect('fixture');
   context.StreamNotifications.receiveChat('eggbotreal','A stream goal was reached!','fixture','generic-ai');
   await new Promise(setImmediate);
-  assert.match(request.messages[0].content,/A stream goal was reached!/);assert.match(request.messages[0].content,/Do not address or thank eggbotreal/);
+  assert.match(request.messages[0].content,/A stream goal was reached!/);assert.match(request.messages[0].content,/Do not address or thank the bot/);
   assert.equal(JSON.parse(saved.get('streamaac_notifications_v1:fixture')).events[0].response,'That is exciting!');
 });
 test('bot notifications work without a Twitch token or AI request and respect the channel setting', async () => {
-  const path = require('node:path'); const saved = new Map([['streamaac_ignored_commands_v1', JSON.stringify([{command:'!fixture',replies:['Test reply:']}])]]); const elements = new Map(); let requests = 0;
+  const path = require('node:path'); const saved = new Map([['ignored_bots', 'eggbotreal'],['streamaac_ignored_commands_v1', JSON.stringify([{command:'!fixture',replies:['Test reply:']}])]]); const elements = new Map(); let requests = 0;
   const context = vm.createContext({
     document:{addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',setAttribute(){},replaceChildren(){}});return elements.get(id);}},
     addEventListener(){},localStorage:{getItem:k=>saved.get(k)??null,setItem:(k,v)=>saved.set(k,v)},
@@ -139,4 +140,16 @@ test('announcement parsing verifies USERNOTICE type and sender login rather than
   assert.equal(spoof.user,'viewer');assert.equal(parseBotAnnouncement(spoof.user,spoof.text,'fixture','id'),null);
   const real = context.parseIrcMsg(line('msg-id=announcement;login=eggbotreal;emotes='));
   assert.equal(parseBotAnnouncement(real.user,real.text,'fixture','id').kind,'subscribe');
+});
+
+test('configured bots replace the hard-coded account', () => {
+ const original = global.localStorage;
+ try {
+ global.localStorage = { getItem: () => ' OtherBot, SecondBot ' };
+ assert.equal(parseBotAnnouncement('OTHERBOT', 'FixtureUser followed!', 'fixture', 'custom').kind, 'follow');
+ assert.equal(parseBotAnnouncement('secondbot', 'Hello', 'fixture', 'second').eventOrigin, 'secondbot');
+ assert.equal(parseBotAnnouncement('eggbotreal', 'Hello', 'fixture', 'removed'), null);
+ global.localStorage = {getItem: () => ''};
+ assert.equal(parseBotAnnouncement('otherbot', 'Hello', 'fixture', 'empty'), null);
+ } finally { global.localStorage = original; }
 });
