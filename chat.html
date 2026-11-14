@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=voice-source-1" defer></script>
-<script src="sample-phrases.js"></script>
+<script src="phrases-data.js"></script>
 <script src="command-ignores.js" defer></script>
 <script src="notifications.js?v=proxy-auth-1" defer></script>
 </head>
@@ -74,7 +74,7 @@
           <span>phrases</span>
           <div style="display:flex;gap:8px">
             <button class="phrases-icon-btn" onclick="renderPhrasesGrid()" title="Refresh">↻</button>
-            <button class="phrases-icon-btn" id="phrases-edit-btn" onclick="togglePhraseEditor()" title="Manage phrases">✎</button>
+            <a class="phrases-icon-btn" href="game-phrases.html#general-phrases" aria-label="Manage phrases">✎</a>
           </div>
         </div>
         <div id="phrases-grid"></div>
@@ -85,24 +85,6 @@
             <span id="phrases-tag-page-info"></span>
           </div>
           <div id="phrases-tag-grid"></div>
-        </div>
-        <div id="phrases-editor">
-          <div id="phrases-editor-header">
-            <span>manage phrases</span>
-          </div>
-          <div id="phrases-add-form">
-            <datalist id="phrase-tag-datalist"></datalist>
-            <input type="text" id="phrase-tag-input" placeholder="tag" list="phrase-tag-datalist" autocomplete="off">
-            <input type="text" id="phrase-label-input" placeholder="label (optional)" autocomplete="off">
-            <input type="text" id="phrase-phrase-input" placeholder="phrase text…" autocomplete="off">
-            <button onclick="addPhrase()">+ add</button>
-          </div>
-          <div id="phrases-io-bar">
-            <button onclick="exportPhrases()">↓ export .txt</button>
-            <input type="file" id="phrases-import-input" accept=".txt" style="display:none" onchange="importPhrases(event)">
-            <button onclick="document.getElementById('phrases-import-input').click()">↑ import .txt</button>
-          </div>
-          <div id="phrases-list"></div>
         </div>
       </div>
       <p id="speech-status" role="status" aria-live="polite"></p>
@@ -194,7 +176,7 @@ function showQuietPhrases(reuse = false) {
   renderFsCards(batch);
   const area = document.getElementById('fs-responses');
   if (!count) {
-    area.innerHTML = '<div class="fs-loader" role="status">No phrases yet. Add general phrases on the Phrases page or upload a game .txt file on the home page.</div>';
+    area.innerHTML = '<div class="fs-loader" role="status">No phrases yet. Add general phrases on the Phrases page or upload a game .txt file on the Phrases page.</div>';
   } else {
     for (let i = count; i < 4; i++) {
       const placeholder = document.createElement('div');
@@ -245,7 +227,6 @@ window.addEventListener('DOMContentLoaded', () => {
   connectYouTube();
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
-  seedPhrasesIfEmpty();
   updateSuggestEnabled();
 });
 
@@ -760,38 +741,9 @@ let phrasesTagPage = 0;
 let tagViewTag = null;
 let tagViewPage = 0;
 let suggestedPhraseIds = null; // null = loading, [] = empty, [ids] = results
-let phraseEditorOpen = false;
 let phrasesSuggestToken = 0;
 
 // ── PHRASES DATA LAYER ──
-function seedPhrasesIfEmpty() {
-  if (localStorage.getItem('stored_phrases') !== null) return;
-  savePhrases((typeof SAMPLE_PHRASES !== 'undefined' ? SAMPLE_PHRASES : [])
-    .map(p => ({ id: generateId(), ...p })));
-}
-
-function loadPhrases() {
-  try { return JSON.parse(localStorage.getItem('stored_phrases') || '[]'); }
-  catch(_) { return []; }
-}
-
-function savePhrases(arr) {
-  localStorage.setItem('stored_phrases', JSON.stringify(arr));
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-function getPhraseTags(phrases) {
-  const seen = new Set(), tags = [];
-  for (const p of phrases) {
-    const t = p.tag || 'misc';
-    if (!seen.has(t)) { seen.add(t); tags.push(t); }
-  }
-  return tags;
-}
-
 // ── PHRASES VIEW TOGGLE ──
 function togglePhrasesView() {
   phrasesViewActive = !phrasesViewActive;
@@ -801,7 +753,6 @@ function togglePhrasesView() {
   document.getElementById('phrases-main').style.display = phrasesViewActive ? 'flex' : 'none';
   if (phrasesViewActive) {
     suggestedPhraseIds = null;
-    phraseEditorOpen = false;
     phrasesTagPage = 0;
     showPhrasesPanel('grid');
     renderPhrasesGrid();
@@ -812,8 +763,6 @@ function togglePhrasesView() {
 function showPhrasesPanel(which) {
   document.getElementById('phrases-grid').style.display = which === 'grid' ? 'grid' : 'none';
   document.getElementById('phrases-tag-view').style.display = which === 'tag' ? 'flex' : 'none';
-  document.getElementById('phrases-editor').style.display = which === 'editor' ? 'flex' : 'none';
-  document.getElementById('phrases-edit-btn').classList.toggle('active', which === 'editor');
 }
 
 // ── PHRASES GRID ──
@@ -870,7 +819,7 @@ function renderPhrasesGrid() {
     const hint = document.createElement('div');
     hint.className = 'phrase-cell empty phrases-empty-hint';
     hint.style.cssText = 'grid-column:2/-1;grid-row:3/5;opacity:1;pointer-events:none;border-style:dashed;flex-direction:column;gap:6px';
-    hint.innerHTML = '<span style="font-size:15px;color:var(--muted)">no phrases yet</span><span style="font-size:13px;color:var(--muted);opacity:0.7">add one with ✎</span>';
+    hint.innerHTML = '<span style="font-size:15px;color:var(--muted)">no phrases yet</span><span style="font-size:13px;color:var(--muted);opacity:0.7">manage phrases with ✎</span>';
     grid.appendChild(hint);
   } else if (tags.length === 0) {
     for (let i = 0; i < 8; i++) grid.appendChild(makeEmptyCell());
@@ -1040,185 +989,6 @@ Pick the 4 most contextually relevant phrase IDs. Return ONLY valid JSON: {"ids"
 }
 
 // ── PHRASE EDITOR ──
-function togglePhraseEditor() {
-  if (phraseEditorOpen) {
-    phraseEditorOpen = false;
-    showPhrasesPanel('grid');
-  } else {
-    phraseEditorOpen = true;
-    tagViewTag = null;
-    showPhrasesPanel('editor');
-    renderPhraseEditor();
-    refreshTagDatalist();
-  }
-}
-
-function renderPhraseEditor() {
-  const list = document.getElementById('phrases-list');
-  list.innerHTML = '';
-  const phrases = loadPhrases();
-  const tags = getPhraseTags(phrases);
-  if (!phrases.length) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:12px 0">no phrases yet — add one above</div>';
-    return;
-  }
-  tags.forEach(tag => {
-    const group = phrases.filter(p => (p.tag || 'misc') === tag);
-    const lbl = document.createElement('div');
-    lbl.className = 'phrase-group-label';
-    lbl.textContent = `${tag} (${group.length} phrase${group.length !== 1 ? 's' : ''})`;
-    list.appendChild(lbl);
-    group.forEach(p => {
-      const row = document.createElement('div');
-      row.className = 'phrase-row';
-      row.innerHTML = `
-        <input class="pr-tag" value="${x(p.tag || 'misc')}" list="phrase-tag-datalist"
-          onchange="updatePhraseField('${p.id}','tag',this.value)" autocomplete="off">
-        <input class="pr-label" value="${x(p.label || '')}" placeholder="label"
-          onchange="updatePhraseField('${p.id}','label',this.value)" autocomplete="off">
-        <input class="pr-phrase" value="${x(p.phrase)}" placeholder="phrase"
-          onchange="updatePhraseField('${p.id}','phrase',this.value)" autocomplete="off">
-        <button class="pr-star${p.starred ? ' starred' : ''}" onclick="togglePhraseStar('${p.id}')" title="Star">★</button>
-        <button class="pr-del" onclick="deletePhrase('${p.id}')" title="Delete">✕</button>`;
-      list.appendChild(row);
-    });
-  });
-}
-
-function addPhrase() {
-  const tagIn = document.getElementById('phrase-tag-input').value.trim() || 'misc';
-  const labelIn = document.getElementById('phrase-label-input').value.trim();
-  const phraseIn = document.getElementById('phrase-phrase-input').value.trim();
-  if (!phraseIn) return;
-  const phrases = loadPhrases();
-  phrases.push({ id: generateId(), tag: tagIn, label: labelIn || phraseIn, phrase: phraseIn, starred: false });
-  savePhrases(phrases);
-  document.getElementById('phrase-tag-input').value = '';
-  document.getElementById('phrase-label-input').value = '';
-  document.getElementById('phrase-phrase-input').value = '';
-  renderPhraseEditor();
-  refreshTagDatalist();
-  if (!phraseEditorOpen) renderPhrasesGrid();
-}
-
-function updatePhraseField(id, field, value) {
-  const phrases = loadPhrases();
-  const p = phrases.find(ph => ph.id === id);
-  if (!p) return;
-  if (field === 'tag') p.tag = value.trim() || 'misc';
-  else if (field === 'label') p.label = value.trim();
-  else if (field === 'phrase') p.phrase = value.trim();
-  savePhrases(phrases);
-  if (field === 'tag') { renderPhraseEditor(); refreshTagDatalist(); }
-}
-
-function togglePhraseStar(id) {
-  const phrases = loadPhrases();
-  const p = phrases.find(ph => ph.id === id);
-  if (!p) return;
-  p.starred = !p.starred;
-  savePhrases(phrases);
-  renderPhraseEditor();
-  renderPhrasesGrid();
-}
-
-function deletePhrase(id) {
-  const phrases = loadPhrases().filter(p => p.id !== id);
-  savePhrases(phrases);
-  renderPhraseEditor();
-  renderPhrasesGrid();
-}
-
-function refreshTagDatalist() {
-  const dl = document.getElementById('phrase-tag-datalist');
-  if (!dl) return;
-  dl.innerHTML = '';
-  getPhraseTags(loadPhrases()).forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    dl.appendChild(opt);
-  });
-}
-
-// ── PHRASES EXPORT / IMPORT ──
-function formatPhrasesTxt(phrases) {
-  const today = new Date().toISOString().slice(0, 10);
-  let out = `# StreamAAC phrases — exported ${today}\n# Format: [tag], then  * label | phrase  (* = favourite)\n\n`;
-  const tags = getPhraseTags(phrases);
-  tags.forEach(tag => {
-    out += `[${tag}]\n`;
-    phrases.filter(p => (p.tag || 'misc') === tag).forEach(p => {
-      out += `${p.starred ? '* ' : ''}${p.label || p.phrase} | ${p.phrase}\n`;
-    });
-    out += '\n';
-  });
-  return out.trimEnd();
-}
-
-function exportPhrases() {
-  const phrases = loadPhrases();
-  if (!phrases.length) { alert('No phrases to export.'); return; }
-  const txt = formatPhrasesTxt(phrases);
-  const blob = new Blob([txt], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  const today = new Date().toISOString().slice(0, 10);
-  a.download = `streamaac-phrases-${today}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function parsePhrasesTxt(text) {
-  const parsed = [];
-  let currentTag = 'misc';
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const tagMatch = line.match(/^\[(.+)\]$/);
-    if (tagMatch) { currentTag = tagMatch[1].trim() || 'misc'; continue; }
-    const starred = line.startsWith('* ');
-    const content = starred ? line.slice(2).trim() : line;
-    const sep = content.includes(' | ') ? ' | ' : '|';
-    const idx = content.indexOf(sep);
-    let label, phrase;
-    if (idx !== -1) {
-      label = content.slice(0, idx).trim();
-      phrase = content.slice(idx + sep.length).trim();
-    } else {
-      label = content;
-      phrase = content;
-    }
-    if (phrase) parsed.push({ tag: currentTag, label: label || phrase, phrase, starred });
-  }
-  return parsed;
-}
-
-function importPhrases(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const incoming = parsePhrasesTxt(e.target.result);
-    const existing = loadPhrases();
-    const existingPhrases = new Set(existing.map(p => p.phrase));
-    let added = 0;
-    incoming.forEach(p => {
-      if (!existingPhrases.has(p.phrase)) {
-        existing.push({ id: generateId(), ...p });
-        existingPhrases.add(p.phrase);
-        added++;
-      }
-    });
-    savePhrases(existing);
-    renderPhraseEditor();
-    refreshTagDatalist();
-    renderPhrasesGrid();
-    alert(`Imported ${added} phrase${added !== 1 ? 's' : ''} (${incoming.length - added} duplicate${incoming.length - added !== 1 ? 's' : ''} skipped).`);
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
 // ── GENERATE FROM KEYWORDS ──
 async function genFromKeywords() {
   if (quietMode) return;

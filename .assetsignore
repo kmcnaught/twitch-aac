@@ -4,7 +4,6 @@
 !/chat.html
 !/styles.css
 !/chat-core.js
-!/sample-phrases.js
 !/profiles.js
 !/build-info.js
 !/game-phrases.html
@@ -12,3 +11,7 @@
 !/command-ignores.js
 
 !/settings.html
+
+!/starter-phrases.txt
+!/phrases-data.js
+!/phrases-manager.js

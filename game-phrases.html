@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StreamAAC · Game phrases</title>
+<title>StreamAAC · Phrases</title>
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=voice-source-1" defer></script>
+<script src="phrases-data.js" defer></script>
+<script src="phrases-manager.js" defer></script>
 <script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page game-phrases-page">
@@ -20,14 +22,34 @@
     <nav class="profiles-nav" aria-label="Main navigation">
       <a class="nav-item" aria-label="Home" href="index.html">⌂ <span>Home</span></a>
       <a class="nav-item" aria-label="Profiles" href="index.html#profiles-heading">♙ <span>Profiles</span></a>
-      <a class="nav-item" aria-label="Chat and phrases" href="chat.html">▤ <span>Chat &amp; phrases</span></a>
-      <a class="nav-item selected" aria-label="Game phrases" href="game-phrases.html" aria-current="page">♧ <span>Game phrases</span></a>
+      <a class="nav-item" aria-label="Chat" href="chat.html">▤ <span>Chat</span></a>
+      <a class="nav-item selected" aria-label="Phrases" href="game-phrases.html" aria-current="page">♧ <span>Phrases</span></a>
       <a class="nav-item" aria-label="Settings" href="settings.html">⚙ <span>Settings</span></a>
     </nav>
     <main class="profiles-main">
-      <div class="profiles-heading"><div><h1>Game phrases</h1><p>Manage phrase files for Quiet Mode.</p></div></div>
+      <div class="profiles-heading"><div><h1>Phrases</h1><p>Manage your general phrases and game phrase files.</p><p><a href="#general-phrases">General phrases</a> · <a href="#game-phrase-manager">Game phrases</a></p></div></div>
+        <div id="phrases-editor">
+          <div id="phrases-editor-header">
+            <h2 id="general-phrases">General phrases</h2><p>Saved in this browser. Load starter phrases, import a .txt file, or add your own.</p>
+          </div>
+          <div id="phrases-add-form">
+            <datalist id="phrase-tag-datalist"></datalist>
+            <input type="text" aria-label="Tag" id="phrase-tag-input" placeholder="tag" list="phrase-tag-datalist" autocomplete="off">
+            <input type="text" aria-label="Label (optional)" id="phrase-label-input" placeholder="label (optional)" autocomplete="off">
+            <input type="text" aria-label="Phrase text" id="phrase-phrase-input" placeholder="phrase text…" autocomplete="off">
+            <button onclick="addPhrase()">+ add</button>
+          </div>
+          <div id="phrases-io-bar">
+            <button id="load-starter-phrases" onclick="loadStarterPhrases()">load starter phrases</button>
+            <button onclick="exportPhrases()">↓ export .txt</button>
+            <input type="file" id="phrases-import-input" accept=".txt" style="display:none" onchange="importPhrases(event)">
+            <button onclick="document.getElementById('phrases-import-input').click()">↑ import .txt</button>
+          </div>
+          <div id="phrases-list"></div>
+        </div>
+
       <section id="game-phrase-manager" aria-label="Game phrase files">
-        <h2>Quiet Mode · game phrases</h2>
+        <h2>Game phrases</h2>
         <p>Choose a game below, then upload a .txt file. Each non-empty line is one phrase. Saved in this browser.</p>
         <div class="row">
           <label for="game-select">♧ Game</label>
