@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=voice-source-1" defer></script>
-<script src="sample-phrases.js"></script>
 <script src="command-ignores.js" defer></script>
 <script src="notifications.js?v=proxy-auth-1" defer></script>
 </head>
@@ -245,7 +244,6 @@ window.addEventListener('DOMContentLoaded', () => {
   connectYouTube();
 
   initClearBtn(document.getElementById('fs-custom-input'), document.getElementById('fs-custom-clear'));
-  seedPhrasesIfEmpty();
   updateSuggestEnabled();
 });
 
@@ -764,12 +762,6 @@ let phraseEditorOpen = false;
 let phrasesSuggestToken = 0;
 
 // ── PHRASES DATA LAYER ──
-function seedPhrasesIfEmpty() {
-  if (localStorage.getItem('stored_phrases') !== null) return;
-  savePhrases((typeof SAMPLE_PHRASES !== 'undefined' ? SAMPLE_PHRASES : [])
-    .map(p => ({ id: generateId(), ...p })));
-}
-
 function loadPhrases() {
   try { return JSON.parse(localStorage.getItem('stored_phrases') || '[]'); }
   catch(_) { return []; }
