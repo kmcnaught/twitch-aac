@@ -27,11 +27,11 @@ test('Twitch /me ACTION wrappers are accepted for all five bot announcements', (
   assert.equal(parseBotAnnouncement('eggbotreal', '\x01ACTION FixtureFollower followed!\x01', 'fixture', 'action-follow').username, 'FixtureFollower');
   assert.equal(parseBotAnnouncement('viewer', '\x01ACTION FixtureUser followed!\x01', 'fixture', 'spoof'), null);
 });
-test('gift lifetime total is not the current gift count, and resub messages omit the emote', () => {
+test('gift lifetime total is not the current gift count, and resub messages preserve the suffix', () => {
   const gift = parseBotAnnouncement('eggbotreal', examples[1][0], 'fixture', 'gift');
   assert.equal(gift.subscriptions, 1); assert.equal(gift.lifetimeGifts, 47); assert.equal(gift.recipient, 'FixtureRecipient'); assert.equal(gift.tierLabel, 'Tier 1');
   const resub = parseBotAnnouncement('eggbotreal', examples[2][0], 'fixture', 'resub');
-  assert.equal(resub.months, 7); assert.equal(resub.tierLabel, 'Prime'); assert.equal(resub.supporterMessage, 'Thanks!');
+  assert.equal(resub.months, 7); assert.equal(resub.tierLabel, 'Prime'); assert.equal(resub.supporterMessage, 'CrreamAwk Thanks!');
   assert.equal(parseBotAnnouncement('eggbotreal', examples[4][0], 'fixture', 'raid').viewers, 25);
 });
 test('only the real bot login is accepted; other wording becomes a bot message', () => {
@@ -40,7 +40,7 @@ test('only the real bot login is accepted; other wording becomes a bot message',
     const e = parseBotAnnouncement('eggbotreal', text, 'fixture', 'id'); assert.equal(e.kind, 'bot'); assert.equal(e.botText, text);
   }
   assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser subscribed with Prime', 'fixture', 'id').tierLabel, 'Prime');
-  assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser resubscribed with Tier 1 (12 months) CrreamAwk', 'fixture', 'id').supporterMessage, '');
+  assert.equal(parseBotAnnouncement('eggbotreal', 'FixtureUser resubscribed with Tier 1 (12 months) CrreamAwk', 'fixture', 'id').supporterMessage, 'CrreamAwk');
 });
 test('no commands or reply text are hard-coded as exclusions', () => {
   for (const text of ['!fixture', 'Test reply: example']) {
@@ -152,4 +152,25 @@ test('configured bots replace the hard-coded account', () => {
  global.localStorage = {getItem: () => ''};
  assert.equal(parseBotAnnouncement('otherbot', 'Hello', 'fixture', 'empty'), null);
  } finally { global.localStorage = original; }
+});
+
+test('announcement variants do not depend on a channel emote', () => {
+ const cases = [
+  ['@FixtureUser is now following.', 'follow', {}],
+  ['FixtureUser gifted a Tier 2 sub to Recipient', 'gift', {recipient:'Recipient', subscriptions:1}],
+  ["FixtureUser gifted a Tier 1 sub to Recipient OtherEmote They've gifted 99 subs in total!", 'gift', {lifetimeGifts:99, subscriptions:1}],
+  ['FixtureUser gifted 5 Tier 1 subs to the community!', 'gift', {subscriptions:5}],
+  ['FixtureUser resubscribed with Prime (3 months)', 'resubscribe', {months:3, supporterMessage:''}],
+  ['FixtureUser resubscribed with Tier 1 (3 months) Hello there!', 'resubscribe', {supporterMessage:'Hello there!'}],
+  ['FixtureUser just subscribed!', 'subscribe', {}],
+  ['FixtureUser raided with 42 viewers!', 'raid', {viewers:42}]
+ ];
+ for (const [text,kind,details] of cases) {
+  const event = parseBotAnnouncement('eggbotreal', text, 'fixture', text);
+  assert.equal(event.kind,kind,text);
+  for (const [key,value] of Object.entries(details)) assert.equal(event[key],value,text);
+ }
+ for (const text of ['FixtureUser gifted a Tier 1 sub to Recipient is only an example', 'FixtureUser gifted zero subs to the community!', 'FixtureUser raided with -2 viewers!', 'FixtureUser subscribed with an unknown tier', 'Someone said FixtureUser just subscribed!']) {
+  assert.equal(parseBotAnnouncement('eggbotreal',text,'fixture',text).kind,'bot',text);
+ }
 });

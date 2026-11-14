@@ -1,8 +1,8 @@
 # Twitch notifications
 
-## Eggbot chat announcements
+## Configured bot chat announcements
 
-All other posts from eggbotreal now become **Bot message** notifications, with the original text visible and the usual editable Speak/Dismiss response. Saved phrases can be mapped to Bot message (or tagged `event:bot`); AI mode uses the original message as untrusted event data. Phrase-bank mode still makes no notification AI requests.
+All other posts from configured bots now become **Bot message** notifications, with the original text visible and the usual editable Speak/Dismiss response. Saved phrases can be mapped to Bot message (or tagged `event:bot`); AI mode uses the original message as untrusted event data. Phrase-bank mode still makes no notification AI requests.
 
 The home screen includes **Commands to ignore in Notifications**, with add/update, remove, import and export. Entries match command names (including arguments), Twitch-tagged replies to those commands, or any configured reply beginning. Reply beginnings ignore case, whitespace, leading emoji and straight/curly apostrophes. Add each part of a split reply on its own line. Removing an entry allows future matching posts through; saved notifications are unchanged.
 
@@ -47,3 +47,5 @@ Run `node tests/notifications.test.cjs`, `node tests/elevenlabs-settings.test.cj
 Serve locally and open `tests/notifications-preview.html` for a simulation with isolated test storage, fake Twitch/AI responses, and silent simulated speech. This fixture blocks external service requests. Use Add raid, Finish simulated speech and Refresh app to exercise queueing and speech outcomes. It is excluded from published assets.
 
 Live broadcaster authorization, Twitch event delivery, ElevenLabs/browser audio on the user's PC, and eye-gaze ergonomics still require real-world testing. No new runtime dependencies or build step are introduced.
+
+Announcement matching is case-insensitive and accepts optional @ prefixes, common follow/subscription/raid wording, and community gift counts. Individual gifts and resubscriptions no longer require a particular channel emote. Resubscription suffix text is preserved verbatim, including any emotes, rather than guessing which words belong to the supporter. Unknown formats remain generic Bot message notifications. This is a set of supported formats, not automatic understanding of every bot template.
