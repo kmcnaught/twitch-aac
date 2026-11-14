@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="styles.css?v=proxy-auth-1">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 <script src="chat-core.js?v=voice-source-1" defer></script>
+<script src="bot-patterns.js" defer></script>
 <script src="build-info.js" defer></script>
 </head>
 <body class="profiles-page">
@@ -29,6 +30,7 @@
       <nav class="settings-subnav" aria-label="Settings sections">
         <a class="hbtn" href="#voice-settings" aria-current="location">Voice settings</a>
         <a class="hbtn" href="#connection-settings">AI and YouTube connection</a>
+        <a class="hbtn" href="#bot-pattern-settings">Bot message patterns</a>
       </nav>
       <section class="profile-settings" id="voice-settings" aria-labelledby="voice-heading">
         <h2 id="voice-heading">Voice settings</h2>
@@ -176,6 +178,24 @@
 
         <p>To disable this connection, clear the URL and press Save proxy. Profile switching and profile imports do not change this setting.</p>
       </section>
+      <section class="profile-settings" id="bot-pattern-settings" aria-labelledby="bot-pattern-heading">
+        <h2 id="bot-pattern-heading">Bot message patterns</h2>
+        <div class="profile-toolbar"><button class="hbtn" type="button" id="bot-pattern-import">Import .txt patterns</button><button class="hbtn" type="button" id="bot-pattern-export">Export .txt patterns</button></div>
+        <input type="file" id="bot-pattern-file" accept=".txt,text/plain" hidden>
+        <p>Text files use one pattern per line: event | message pattern. Event names: follow, subscribe, resubscribe, gift, raid. Blank lines and lines beginning with # are ignored. Imports keep existing patterns and skip duplicates.</p>
+        <p>Choose an event and copy your bot's wording, replacing changing details with placeholders. Patterns are shared across profiles in this browser. Only bots in Home's Ignore bots list are checked; ignored commands are skipped.</p>
+        <p>Matching ignores letter case and outer spaces. All other wording, spaces, and punctuation must match. Add separate patterns for different messages. The first matching pattern wins. Unmatched messages stay as generic bot notifications.</p>
+        <p>Include {username}. Other placeholders: {recipient}, {tier}, {subscriptions}, {months}, {viewers}, {lifetimeGifts}, {supporterMessage}, and {ignore} for text you do not need. Use each placeholder once per pattern, separated by text or spaces. A placeholder ends at the next matching separator. Names exclude @, so include @ in the pattern when your bot uses it. Counts use whole numbers.</p>
+        <form id="bot-pattern-form">
+          <div class="voice-row"><label for="bot-pattern-kind">Event</label><select id="bot-pattern-kind"><option value="follow">Follow</option><option value="subscribe">Subscription</option><option value="resubscribe">Resubscription</option><option value="gift">Gifted subscription</option><option value="raid">Raid</option></select></div>
+          <div class="row"><label for="bot-pattern-template">Message pattern</label><textarea id="bot-pattern-template" rows="3" maxlength="500" aria-describedby="bot-pattern-status" spellcheck="false"></textarea></div>
+          <div class="profile-toolbar"><button class="hbtn" type="submit">Save pattern</button><button class="hbtn" type="button" id="bot-pattern-cancel">Cancel edit / New pattern</button></div>
+          <div class="row"><label for="bot-pattern-example">Bot message to test</label><textarea id="bot-pattern-example" rows="3" maxlength="2000" spellcheck="false"></textarea></div>
+          <button class="hbtn" type="button" id="bot-pattern-test">Test pattern without saving</button>
+        </form>
+        <p id="bot-pattern-status" role="status" aria-live="polite"></p>
+        <div id="bot-pattern-list"></div>
+      </section>
     </main>
   </div>
 </div>
@@ -295,7 +315,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function initSettingsNavigation() {
   const links = document.querySelectorAll('.settings-subnav a');
-  const panels = ['voice-settings', 'connection-settings'];
+  const panels = ['voice-settings', 'connection-settings', 'bot-pattern-settings'];
   function showSection() {
     const active = panels.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'voice-settings';
     panels.forEach(id => { document.getElementById(id).hidden = id !== active; });
