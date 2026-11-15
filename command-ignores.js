@@ -43,10 +43,14 @@
     function showPanel() {
       if (!profilesPanel || !commandsPanel) return;
       const commandsOpen = root.location.hash === '#ignored-commands';
-      profilesPanel.hidden = commandsOpen;
+      const homePanel = document.getElementById('home-panel');
+      const homeOpen = Boolean(homePanel) && !commandsOpen && root.location.hash !== '#profiles-heading';
+      if (homePanel) homePanel.hidden = !homeOpen;
+      profilesPanel.hidden = commandsOpen || homeOpen;
       commandsPanel.hidden = !commandsOpen;
-      for (const [id, selected] of [['profiles-nav-link', !commandsOpen], ['ignored-commands-nav-link', commandsOpen]]) {
+      for (const [id, selected] of [['home-nav-link', homeOpen], ['profiles-nav-link', !commandsOpen && !homeOpen], ['ignored-commands-nav-link', commandsOpen]]) {
         const link = document.getElementById(id);
+        if (!link) continue;
         link.classList.toggle('selected', selected);
         if (selected) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
       }
