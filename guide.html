@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamAAC · Guide</title>
+<link rel="stylesheet" href="styles.css?v=guide-2">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+</head>
+<body class="profiles-page guide-page">
+<div id="compact-view">
+  <header>
+    <div class="brand"><div class="logo">StreamAAC</div><div class="tagline">Chat. Stream. Be You.</div></div>
+    <a class="hbtn" href="guide.html" aria-current="page">Guide</a>
+    <button class="hbtn" id="theme-btn" aria-label="Toggle light/dark mode">☀</button>
+  </header>
+  <div class="profiles-layout">
+    <nav class="profiles-nav" aria-label="Main navigation">
+      <a class="nav-item" aria-label="Home" href="index.html">⌂ <span>Home</span></a>
+      <a class="nav-item" aria-label="Profiles" href="index.html#profiles-heading">♙ <span>Profiles</span></a>
+      <a class="nav-item" aria-label="Chat" href="chat.html">▤ <span>Chat</span></a>
+      <a class="nav-item" aria-label="Phrases" href="game-phrases.html">♧ <span>Phrases</span></a>
+      <a class="nav-item" aria-label="Commands to ignore in Notifications" href="index.html#ignored-commands">⊘ <span>Commands to ignore in Notifications</span></a>
+      <a class="nav-item" aria-label="Settings" href="settings.html">⚙ <span>Settings</span></a>
+    </nav>
+    <main class="profiles-main">
+      <div class="profiles-heading"><div><h1>Guide</h1><p>Get ready to chat, stream and be you.</p></div></div>
+      <section class="home-getting-started" aria-labelledby="guide-profiles">
+        <h2 id="guide-profiles">1. Set up a profile</h2>
+        <p>Open Profiles, choose a saved profile or create a new one, and enter the Twitch channel you want to follow. Profiles keep different setups ready for different games or streams.</p>
+        <a href="index.html#profiles-heading">Open profiles →</a>
+      </section>
+      <section class="home-getting-started" aria-labelledby="guide-voice">
+        <h2 id="guide-voice">2. Choose your voice</h2>
+        <p>In Settings, choose a browser voice or set up ElevenLabs. Adjust the voice to suit you. Voice settings are shared across profiles in this browser; use Export voice settings to keep a backup.</p>
+        <a href="settings.html#voice-settings">Open voice settings →</a>
+      </section>
+      <section class="home-getting-started" aria-labelledby="guide-phrases">
+        <h2 id="guide-phrases">3. Keep useful phrases ready</h2>
+        <p>Use Phrases to save replies you use often and organise phrases for your games. You can import phrases and export a backup for later.</p>
+        <a href="game-phrases.html">Open phrases →</a>
+      </section>
+      <section class="home-getting-started" aria-labelledby="guide-chat">
+        <h2 id="guide-chat">4. Open chat and respond</h2>
+        <p>Open Chat to follow your channel. Choose a saved phrase or type your own words, then use the speech controls when you want to speak. To send messages to Twitch chat, connect your Twitch account in Profiles.</p>
+        <p>You choose what to say, speak or send.</p>
+        <a href="chat.html">Open chat →</a>
+      </section>
+      <section class="home-getting-started" aria-labelledby="guide-help">
+        <h2 id="guide-help">AI suggestions and YouTube</h2>
+        <p>AI suggestions and YouTube chat need a configured proxy connection. Open Settings to add your proxy URL and access token if your proxy requires one.</p>
+        <a href="settings.html#connection-settings">Open connection settings →</a>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+const themeButton = document.getElementById('theme-btn');
+function updateThemeButton() {
+  themeButton.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾';
+}
+themeButton.addEventListener('click', () => {
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  updateThemeButton();
+});
+updateThemeButton();
+</script>
+</body>
+</html>
