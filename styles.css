@@ -1003,7 +1003,7 @@
 [data-theme="light"] .home-hero h1 span, [data-theme="light"] .home-tool-icon { color: #b52c63; }
 
 .home-showcase { display: flex; align-items: center; gap: 28px; margin-top: 28px; padding: clamp(24px, 4vw, 40px); border: 1px solid var(--border-ui); border-radius: 20px; background: radial-gradient(ellipse at top left, #ff6a9b18, transparent 70%), var(--surface); }
-.showcase-monogram { display: grid; place-items: center; flex-shrink: 0; width: 112px; height: 112px; border-radius: 28px; background: #6754df; color: white; font: 800 40px 'Syne', sans-serif; }
+.showcase-badge { display: block; flex-shrink: 0; width: 112px; height: 112px; border-radius: 28px; object-fit: contain; }
 .home-showcase .home-eyebrow { margin-bottom: 12px; }
 .home-showcase h2 { font: 800 clamp(28px, 4vw, 40px) 'Syne', sans-serif; overflow-wrap: anywhere; }
 .home-showcase p:not(.home-eyebrow) { margin: 16px 0 22px; line-height: 1.7; }
