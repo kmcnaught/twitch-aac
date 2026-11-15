@@ -1009,3 +1009,8 @@
 .home-showcase p:not(.home-eyebrow) { margin: 16px 0 22px; line-height: 1.7; }
 .home-showcase a { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 64px; padding: 16px 22px; border-radius: 12px; text-decoration: none; line-height: 1.5; }
 @media (max-width: 600px) { .home-showcase { align-items: flex-start; flex-direction: column; } }
+
+@media (max-width: 480px) {
+  .guide-page header { flex-wrap: wrap; }
+  .guide-page header .brand { flex-basis: 100%; }
+}
