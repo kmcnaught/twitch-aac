@@ -1001,3 +1001,11 @@
 @media (max-width: 480px) { .home-actions { flex-direction: column; } .home-actions a { width: 100%; } .home-hero { padding: 24px 20px; } }
 
 [data-theme="light"] .home-hero h1 span, [data-theme="light"] .home-tool-icon { color: #b52c63; }
+
+.home-showcase { display: flex; align-items: center; gap: 28px; margin-top: 28px; padding: clamp(24px, 4vw, 40px); border: 1px solid var(--border-ui); border-radius: 20px; background: radial-gradient(ellipse at top left, #ff6a9b18, transparent 70%), var(--surface); }
+.showcase-monogram { display: grid; place-items: center; flex-shrink: 0; width: 112px; height: 112px; border-radius: 28px; background: #6754df; color: white; font: 800 40px 'Syne', sans-serif; }
+.home-showcase .home-eyebrow { margin-bottom: 12px; }
+.home-showcase h2 { font: 800 clamp(28px, 4vw, 40px) 'Syne', sans-serif; overflow-wrap: anywhere; }
+.home-showcase p:not(.home-eyebrow) { margin: 16px 0 22px; line-height: 1.7; }
+.home-showcase a { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 64px; padding: 16px 22px; border-radius: 12px; text-decoration: none; line-height: 1.5; }
+@media (max-width: 600px) { .home-showcase { align-items: flex-start; flex-direction: column; } }
