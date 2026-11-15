@@ -59,7 +59,7 @@
           <h3>Event phrases</h3><p>Choose an existing saved phrase for each event. Placeholders: {username}, {bits}, {viewers}, {subscriptions}, {months}, {reward}, {points}, {recipient}. Edit or add phrases using the existing phrases manager.</p>
           <div id="notifications-mappings"></div>
           <p>Direct Twitch events require broadcaster permissions (followers also support an authorized moderator). Configured bot announcements only need a working chat connection.</p>
-          <a href="index.html">Open setup to reconnect Twitch</a>
+          <a href="index.html#profiles-heading">Open setup to reconnect Twitch</a>
         </div>
         <div id="notifications-list"></div>
         <button id="notifications-more" hidden>Show more history</button>
@@ -261,7 +261,7 @@ function setFV(btn) {
 function goBack() {
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   clearTimeout(ytPollTimer);
-  window.location.href = 'index.html';
+  window.location.href = 'index.html#profiles-heading';
 }
 
 // ── STATUS ──
@@ -327,7 +327,7 @@ function connect(rawCh) {
 
   function handleConnectFailure(ch) {
     alert(`Could not connect to Twitch chat for "${ch}".\nCheck the channel name and try again.`);
-    window.location.href = 'index.html';
+    window.location.href = 'index.html#profiles-heading';
   }
 
   function scheduleReconnect() {
