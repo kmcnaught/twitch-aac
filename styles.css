@@ -1009,9 +1009,3 @@
 .home-showcase p:not(.home-eyebrow) { margin: 16px 0 22px; line-height: 1.7; }
 .home-showcase a { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 64px; padding: 16px 22px; border-radius: 12px; text-decoration: none; line-height: 1.5; }
 @media (max-width: 600px) { .home-showcase { align-items: flex-start; flex-direction: column; } }
-
-.chat-home-nav { flex: 0 0 76px; padding: 12px 6px; border-right: 1px solid var(--border-ui); background: var(--surface); }
-.chat-home-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 64px; padding: 8px 4px; border: 1px solid var(--border-ui); border-radius: 12px; color: var(--text); text-decoration: none; font-size: 14px; }
-.chat-home-nav a:hover { border-color: var(--accent); }
-.chat-home-nav a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media (max-width: 600px) { .chat-home-nav { flex-basis: 60px; padding: 8px 3px; } .chat-home-nav a { font-size: 12px; } }
